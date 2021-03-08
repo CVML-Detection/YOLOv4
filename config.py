@@ -2,7 +2,7 @@ import argparse
 import torch
 
 # 2. device
-device_ids = [0, 1]
+device_ids = [0]
 device = torch.device('cuda:{}'.format(min(device_ids)) if torch.cuda.is_available() else 'cpu')
 
 
