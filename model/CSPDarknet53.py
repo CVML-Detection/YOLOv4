@@ -290,10 +290,12 @@ class CSPDarknet53(nn.Module):
 
 
 if __name__ == '__main__':
+    img = torch.randn([1, 3, 512, 512]).to(device)
+    
     model = CSPDarknet53(pretrained=True).to(device)
-    img = torch.randn([1, 3, 416, 416]).to(device)
+    feature_channels = model.feature_channels[-3:]
+    print('feature_channels : {}'.format(feature_channels))
     test = model(img)
     for i, f in enumerate(test):
         print('{}_{}'.format(i, f.shape))
 
-    # model = YoloV4(CSPDarknet53(pretrained=True)).to(device)
