@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from config import device
 from CSPDarknet53 import CSPDarknet53
+from global_context_block import ContextBlock2d
 
 
 class Conv(nn.Module):
@@ -29,7 +30,7 @@ class Conv(nn.Module):
 
 
 class SpatialPyramidPooling(nn.Module):
-    def __init__(self, feature_channels, pool_sizes=[5, 9, 13]):
+    def __init__(self, feature_channels, pool_sizes=[5, 9, 13]):        # feature channels = [256, 512, 1024]
         super(SpatialPyramidPooling, self).__init__()
 
         # head conv
@@ -48,14 +49,13 @@ class SpatialPyramidPooling(nn.Module):
         self.__initialize_weights()
 
     def forward(self, x):
-        x = self.head_conv(x)
-        features = [maxpool(x) for maxpool in self.maxpools]
+        x = self.head_conv(x)   # torch.Size([1, 512, 16, 16])
+        features = [maxpool(x) for maxpool in self.maxpools]    # torch.Size([1, 512, 16, 16])
         features = torch.cat([x] + features, dim=1)
-
         return features
 
     def __initialize_weights(self):
-        print("**" * 10, "Initing head_conv weights", "**" * 10)
+        # print("**" * 10, "Initing head_conv weights", "**" * 10)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -63,16 +63,38 @@ class SpatialPyramidPooling(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-                print("initing {}".format(m))
+                # print("initing {}".format(m))
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-                print("initing {}".format(m))
+                # print("initing {}".format(m))
+
+
+class Upsample(nn.Module):
+    def __init__(self, in_channels, out_channels, scale=2):
+        super(Upsample, self).__init__()
+
+        self.upsample = nn.Sequential(
+            Conv(in_channels, out_channels, 1), nn.Upsample(scale_factor=scale)
+        )
+
+    def forward(self, x):
+        return self.upsample(x)
+
+
+class Downsample(nn.Module):
+    def __init__(self, in_channels, out_channels, scale=2):
+        super(Downsample, self).__init__()
+
+        self.downsample = Conv(in_channels, out_channels, 3, 2)
+
+    def forward(self, x):
+        return self.downsample(x)
 
 
 class PANet(nn.Module):
-    def __init__(self, feature_channels):
+    def __init__(self, feature_channels):               # feature channels = [256, 512, 1024]
         super(PANet, self).__init__()
 
         self.feature_transform3 = Conv(
@@ -81,7 +103,6 @@ class PANet(nn.Module):
         self.feature_transform4 = Conv(
             feature_channels[1], feature_channels[1] // 2, 1
         )
-
         self.resample5_4 = Upsample(
             feature_channels[2] // 2, feature_channels[1] // 2
         )
@@ -94,7 +115,6 @@ class PANet(nn.Module):
         self.resample4_5 = Downsample(
             feature_channels[1] // 2, feature_channels[2] // 2
         )
-
         self.downstream_conv5 = nn.Sequential(
             Conv(feature_channels[2] * 2, feature_channels[2] // 2, 1),
             Conv(feature_channels[2] // 2, feature_channels[2], 3),
@@ -114,7 +134,6 @@ class PANet(nn.Module):
             Conv(feature_channels[0] // 2, feature_channels[0], 3),
             Conv(feature_channels[0], feature_channels[0] // 2, 1),
         )
-
         self.upstream_conv4 = nn.Sequential(
             Conv(feature_channels[1], feature_channels[1] // 2, 1),
             Conv(feature_channels[1] // 2, feature_channels[1], 3),
@@ -139,16 +158,21 @@ class PANet(nn.Module):
         ]
 
         downstream_feature5 = self.downstream_conv5(features[2])
+
+        # print('downstream_feature5: {}'.format(downstream_feature5.shape))
         downstream_feature4 = self.downstream_conv4(
             torch.cat(
                 [features[1], self.resample5_4(downstream_feature5)], dim=1
             )
         )
+        # print('downstream_feature4: {}'.format(downstream_feature4.shape))
+
         downstream_feature3 = self.downstream_conv3(
             torch.cat(
                 [features[0], self.resample4_3(downstream_feature4)], dim=1
             )
         )
+        print('downstream_feature3: {}'.format(downstream_feature3.shape))
 
         upstream_feature4 = self.upstream_conv4(
             torch.cat(
@@ -162,11 +186,14 @@ class PANet(nn.Module):
                 dim=1,
             )
         )
+        print('upstream_feature4: {}'.format(upstream_feature4.shape))
+        print('upstream_feature5: {}'.format(upstream_feature5.shape))
+
 
         return [downstream_feature3, upstream_feature4, upstream_feature5]
 
     def __initialize_weights(self):
-        print("**" * 10, "Initing PANet weights", "**" * 10)
+        # print("**" * 10, "Initing PANet weights", "**" * 10)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -174,16 +201,16 @@ class PANet(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-                print("initing {}".format(m))
+                # print("initing {}".format(m))
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-                print("initing {}".format(m))
+                # print("initing {}".format(m))
 
 
 class PredictNet(nn.Module):
-    def __init__(self, feature_channels, target_channels=255):
+    def __init__(self, feature_channels, target_channels=255):              # feature channels = [256, 512, 1024]
         super(PredictNet, self).__init__()
 
         self.predict_conv = nn.ModuleList(
@@ -206,7 +233,7 @@ class PredictNet(nn.Module):
         return predicts
 
     def __initialize_weights(self):
-        print("**" * 10, "Initing PredictNet weights", "**" * 10)
+        # print("**" * 10, "Initing PredictNet weights", "**" * 10)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -214,33 +241,40 @@ class PredictNet(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-                print("initing {}".format(m))
+                # print("initing {}".format(m))
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-                print("initing {}".format(m))
+                # print("initing {}".format(m))
 
 
 class YoloV4(nn.Module):
-    def __init__(self, backbone, num_classes=80):
+    def __init__(self, backbone, num_classes=80, showatt=False):
         super(YoloV4, self).__init__()
         self.backbone = backbone
-        feature_channels = backbone.feature_channels[-3:]
+        feature_channels = backbone.feature_channels[-3:]       # [256, 512, 1024]
+
+        self.showatt=showatt
+
+        if self.showatt:
+            self.attention = ContextBlock2d(feature_channels[-1], feature_channels[-1])
 
         self.SPP = SpatialPyramidPooling(feature_channels)
 
         self.PANet = PANet(feature_channels)
 
-        self.predict_net = PredictNet(feature_channels, out_channels=255)
+        self.predict_net = PredictNet(feature_channels, target_channels=255)
 
     def forward(self, x):
         atten = None
         features = self.backbone(x)     # CSPDarknet53      features[0, 1, 2]
-        print('features1 : {}'.format(features[0].shape))
-        print('features2 : {}'.format(features[1].shape))
-        print('features3 : {}'.format(features[2].shape))
-
+        # print('features1 : {}'.format(features[0].shape))
+        # print('features2 : {}'.format(features[1].shape))
+        # print('features3 : {}'.format(features[2].shape))
+        if self.showatt:
+            features[-1], atten = self.attention(features[-1])
+        
         att = False
         if att:
             print('Attention : ContextBlock2d here')
@@ -251,14 +285,22 @@ class YoloV4(nn.Module):
 
         predicts = self.predict_net(features)
 
-        return predicts
+        print('predicts1: {}'.format(predicts[0].shape))
+        print('predicts2: {}'.format(predicts[1].shape))
+        print('predicts3: {}'.format(predicts[2].shape))
+
+        return predicts, atten
 
 
 
 
 if __name__ == "__main__":
-    img = torch.randn([1, 3, 512, 512]).to(device)
-
+    img_size = 512
+    img = torch.randn([2, 3, img_size, img_size]).to(device)
     model = YoloV4(CSPDarknet53(pretrained=True)).to(device)
 
-    x = model(img)
+    #################################################################
+
+    [f1, f2, f3], atten = model(img)
+    
+    print('final: {}'.format(f1.shape))
