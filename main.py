@@ -2,14 +2,14 @@ import torch
 import visdom
 import os
 import sys
+import torch
 
 from dataset.voc_dataset import VOC_Dataset
 from dataset.coco_dataset import COCO_Dataset
 from train import train
 from test import test
-from model import YoloV3, Darknet53
-from coder import YOLOv3_Coder
-from loss import Yolov3_Loss
+from model import YoloV4, CSPDarknet53
+from coder import YOLOv4_Coder
 from config import parse, device, device_ids
 
 import torch.backends.cudnn as cudnn
@@ -20,6 +20,7 @@ def main():
     opts = parse(sys.argv[1:])
     # 3. visdom
     # vis = visdom.Visdom(port=opts.port)
+    vis = None
 
     train_set = None
     test_set = None
@@ -51,7 +52,10 @@ def main():
                                               pin_memory=True)
 
     # 6. network
+    model = YoloV4(CSPDarknet53(pretrained=True)).to(device)
+    model = torch.nn.DataParallel(model, device_ids=device_ids)
     # 6-1. coder
+    coder = YOLOv4_Coder(data_type=opts.data_type)
     # 7. loss    
     # 8. optimizer
     optimizer = torch.optim.SGD(params=model.parameters(),
@@ -73,6 +77,19 @@ def main():
 
     else:
         print('\nNo check point to resume.. train from scratch.\n')
+
+    for epoch in range(opts.start_epoch, opts.epoch):
+        train(
+            epoch=epoch,
+            vis=vis,
+            train_loader=train_loader,
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            opts=opts)
+
+        scheduler.step()
 
 
 
