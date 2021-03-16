@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 import os, sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from model.CSPDarknet53 import CSPDarknet53
+from model.global_context_block import ContextBlock2d
 from config import device
-from CSPDarknet53 import CSPDarknet53
-from global_context_block import ContextBlock2d
 
 
 class Conv(nn.Module):
@@ -172,7 +172,7 @@ class PANet(nn.Module):
                 [features[0], self.resample4_3(downstream_feature4)], dim=1
             )
         )
-        print('downstream_feature3: {}'.format(downstream_feature3.shape))
+        # print('downstream_feature3: {}'.format(downstream_feature3.shape))
 
         upstream_feature4 = self.upstream_conv4(
             torch.cat(
@@ -186,8 +186,8 @@ class PANet(nn.Module):
                 dim=1,
             )
         )
-        print('upstream_feature4: {}'.format(upstream_feature4.shape))
-        print('upstream_feature5: {}'.format(upstream_feature5.shape))
+        # print('upstream_feature4: {}'.format(upstream_feature4.shape))
+        # print('upstream_feature5: {}'.format(upstream_feature5.shape))
 
 
         return [downstream_feature3, upstream_feature4, upstream_feature5]
@@ -249,9 +249,9 @@ class PredictNet(nn.Module):
                 # print("initing {}".format(m))
 
 
-class YoloV4(nn.Module):
+class YOLOv4(nn.Module):
     def __init__(self, backbone, num_classes=80, showatt=False):
-        super(YoloV4, self).__init__()
+        super(YOLOv4, self).__init__()
         self.backbone = backbone
         feature_channels = backbone.feature_channels[-3:]       # [256, 512, 1024]
 
@@ -285,11 +285,11 @@ class YoloV4(nn.Module):
 
         predicts = self.predict_net(features)
 
-        print('predicts1: {}'.format(predicts[0].shape))
-        print('predicts2: {}'.format(predicts[1].shape))
-        print('predicts3: {}'.format(predicts[2].shape))
+        # print('predicts1: {}'.format(predicts[0].shape))
+        # print('predicts2: {}'.format(predicts[1].shape))
+        # print('predicts3: {}'.format(predicts[2].shape))
 
-        return predicts, atten
+        return [predicts, atten]
 
 
 
@@ -297,10 +297,14 @@ class YoloV4(nn.Module):
 if __name__ == "__main__":
     img_size = 512
     img = torch.randn([2, 3, img_size, img_size]).to(device)
-    model = YoloV4(CSPDarknet53(pretrained=True)).to(device)
+    model = YOLOv4(CSPDarknet53(pretrained=True)).to(device)
 
     #################################################################
 
-    [f1, f2, f3], atten = model(img)
+    # [[f1, f2, f3], atten] = model(img)
+    pred = model(img)
+    [[f1, f2, f3], atten] = pred
     
-    print('final: {}'.format(f1.shape))
+    print('final1: {}'.format(f1.shape))
+    print('final2: {}'.format(f2.shape))
+    print('final3: {}'.format(f3.shape))

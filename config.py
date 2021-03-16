@@ -6,16 +6,37 @@ device_ids = [0]
 device = torch.device('cuda:{}'.format(min(device_ids)) if torch.cuda.is_available() else 'cpu')
 
 
+# model
+MODEL = {
+    "ANCHORS": [
+        [
+            (1.25, 1.625),
+            (2.0, 3.75),
+            (4.125, 2.875),
+        ],  # Anchors for small obj(12,16),(19,36),(40,28)
+        [
+            (1.875, 3.8125),
+            (3.875, 2.8125),
+            (3.6875, 7.4375),
+        ],  # Anchors for medium obj(36,75),(76,55),(72,146)
+        [(3.625, 2.8125), (4.875, 6.1875), (11.65625, 10.1875)],
+    ],  # Anchors for big obj(142,110),(192,243),(459,401)
+    "STRIDES": [8, 16, 32],
+    "ANCHORS_PER_SCLAE": 3,
+}
+
+
+
 def parse(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=150)  # 173
-    parser.add_argument('--port', type=str, default='2005')  # 173
+    parser.add_argument('--port', type=str, default='8097')  # 173
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=0)
-    parser.add_argument('--image_size', type=int, help='320, 416, 608', default=416)
+    parser.add_argument('--image_size', type=int, default=512)
     parser.add_argument('--save_path', type=str, default='./saves')
-    parser.add_argument('--save_file_name', type=str, default='yolov3_darknet53_coco')  # FIXME
+    parser.add_argument('--save_file_name', type=str, default='yolov4_cspdkn53_coco')  # FIXME
     parser.add_argument('--conf_thres', type=float, default=0.05)
     parser.add_argument('--start_epoch', type=int, default=0)
 
@@ -23,8 +44,10 @@ def parse(args):
     # parser.add_argument('--data_root', type=str, default='D:\data\\voc')
     # parser.add_argument('--data_root', type=str, default='D:\data\coco')
     # parser.add_argument('--data_root', type=str, default='/home/cvmlserver5/Sungmin/data/voc')
-    parser.add_argument('--data_root', type=str, default='/home/cvmlserver5/Sungmin/data/coco')
+    # parser.add_argument('--data_root', type=str, default='/home/cvmlserver5/Sungmin/data/coco')
     # parser.add_argument('--data_root', type=str, default='/data/voc')
+    parser.add_argument('--data_root', type=str, default='/data/coco')
+
 
     parser.add_argument('--data_type', type=str, default='coco', help='choose voc or coco')  # FIXME
     parser.add_argument('--num_classes', type=int, default=80)

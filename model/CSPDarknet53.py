@@ -6,7 +6,7 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from config import device
-from attention_layers import SEModule, CBAM
+from model.attention_layers import SEModule, CBAM
 
 
 class Mish(nn.Module):

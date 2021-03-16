@@ -7,9 +7,10 @@ import torch
 from dataset.voc_dataset import VOC_Dataset
 from dataset.coco_dataset import COCO_Dataset
 from train import train
-from test import test
-from model import YoloV4, CSPDarknet53
+# from test import test
+from model.model import YOLOv4, CSPDarknet53
 from coder import YOLOv4_Coder
+from loss import YOLOv4_Loss
 from config import parse, device, device_ids
 
 import torch.backends.cudnn as cudnn
@@ -52,11 +53,13 @@ def main():
                                               pin_memory=True)
 
     # 6. network
-    model = YoloV4(CSPDarknet53(pretrained=True)).to(device)
+    model = YOLOv4(CSPDarknet53(pretrained=True)).to(device)
     model = torch.nn.DataParallel(model, device_ids=device_ids)
     # 6-1. coder
     coder = YOLOv4_Coder(data_type=opts.data_type)
-    # 7. loss    
+    # 7. loss
+    criterion = YOLOv4_Loss(coder=coder)
+
     # 8. optimizer
     optimizer = torch.optim.SGD(params=model.parameters(),
                             lr=opts.lr,
@@ -88,7 +91,7 @@ def main():
             optimizer=optimizer,
             scheduler=scheduler,
             opts=opts)
-
+        break
         scheduler.step()
 
 
