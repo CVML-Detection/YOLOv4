@@ -13,7 +13,6 @@ class YOLOv4_Loss(nn.Module):
         self.num_classes = self.coder.num_classes       # 80
         
 
-
     def forward(self, pred, gt_boxes, gt_labels):
 
         # Decode Pred
@@ -68,7 +67,15 @@ class YOLOv4_Loss(nn.Module):
         label_mix = label[..., 5:6]
         label_cls = label[..., 6:]
         ciou = self.CIOU_xywh_torch(p_d_xywh, label_xywh)
-        return ciou
+
+        loss_ciou = 0
+
+        loss_conf = 0       # Focal Loss
+
+        loss_cls = 0        # BCE
+
+        loss=loss_ciou + loss_conf + loss_cls
+        return loss, loss_ciou, loss_conf, loss_cls
 
 
     def CIOU_xywh_torch(self, boxes1, boxes2):
