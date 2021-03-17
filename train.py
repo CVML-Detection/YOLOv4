@@ -17,6 +17,7 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
         boxes = [b.to(cfg.device) for b in boxes]
         labels = [l.to(cfg.device) for l in labels]
 
+
         print('images : {}'.format(images.shape))
         print('boxes : {}'.format(boxes[0].shape))
         print('labels : {}'.format(labels[0].shape))
