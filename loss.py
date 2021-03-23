@@ -29,6 +29,12 @@ class YOLOv4_Loss(nn.Module):
         # Encode GT (임시)
         # -----------------------------
         batch_size = p[0].shape[0]
+        output_en = []
+        gt_label_s, gt_boxes_s = self.coder.encode(gt_boxes, gt_labels, stage=1)
+        gt_label_m, gt_boxes_m = self.coder.encode(gt_boxes, gt_labels, stage=2)
+        gt_label_l, gt_boxes_l = self.coder.encode(gt_boxes, gt_labels, stage=3)
+
+
 
         gt_labels_en_s = torch.randn([batch_size,64,64,3,86]).to(cfg.device)
         gt_labels_en_m = torch.randn([batch_size,32,32,3,86]).to(cfg.device)
@@ -40,15 +46,12 @@ class YOLOv4_Loss(nn.Module):
         # -----------------------------
         
         strides = self.coder.strides
-        loss_s = self.loss_per_layer(p[0], p_d[0], gt_labels_en_s, gt_boxes_en_s, strides[0])
-        loss_m = self.loss_per_layer(p[1], p_d[1], gt_labels_en_m, gt_boxes_en_m, strides[1])
-        loss_l = self.loss_per_layer(p[2], p_d[2], gt_labels_en_l, gt_boxes_en_l, strides[2])
-
-        print('cious1 : {}'.format(loss_s.shape))
-        print('cious2 : {}'.format(loss_m.shape))
-        print('cious3 : {}'.format(loss_l.shape))
+        (loss_s, loss_s_ciou, loss_s_conf, loss_s_cls) = self.loss_per_layer(p[0], p_d[0], gt_labels_en_s, gt_boxes_en_s, strides[0])
+        (loss_m, loss_m_ciou, loss_m_conf, loss_m_cls) = self.loss_per_layer(p[1], p_d[1], gt_labels_en_m, gt_boxes_en_m, strides[1])
+        (loss_l, loss_l_ciou, loss_l_conf, loss_l_cls) = self.loss_per_layer(p[2], p_d[2], gt_labels_en_l, gt_boxes_en_l, strides[2])
 
         return 0
+
 
     def loss_per_layer(self, p, p_d, label, bboxes, stride):
         BCE = nn.BCEWithLogitsLoss(reduction="none")
@@ -66,12 +69,25 @@ class YOLOv4_Loss(nn.Module):
         label_obj_mask = label[..., 4:5]
         label_mix = label[..., 5:6]
         label_cls = label[..., 6:]
-        ciou = self.CIOU_xywh_torch(p_d_xywh, label_xywh)
 
-        loss_ciou = 0
+        # Calculating Loss
+        # 1) CIoU
+        ciou = self.CIOU_xywh_torch(p_d_xywh, label_xywh).unsqueeze(-1)
 
+        # The scaled weight of bbox is used to balance the impact of small objects and large objects on loss.
+        bbox_loss_scale = 2.0 - 1.0 * label_xywh[..., 2:3] * label_xywh[..., 3:4] / (img_size ** 2)     # [b,grid,grid,3,1]
+        # print('bbox_loss_scale : {}'.format(bbox_loss_scale.shape))
+        # print('label_obj_mask : {}'.format(label_obj_mask.shape))
+        # print('label_mix : {}'.format(label_mix.shape))
+        # print('ciou : {}'.format(ciou.shape))
+        
+        loss_ciou = label_obj_mask * bbox_loss_scale * (1.0 - ciou) * label_mix
+        # print('loss_ciou : {}'.format(loss_ciou.shape))
+
+        # 2) Conf Loss
         loss_conf = 0       # Focal Loss
 
+        # 3) Cls Loss
         loss_cls = 0        # BCE
 
         loss=loss_ciou + loss_conf + loss_cls
@@ -139,7 +155,7 @@ if __name__ == '__main__':
     from coder import YOLOv4_Coder
     import config as cfg
     
-    bs = 2
+    bs = 4
     model = YOLOv4(CSPDarknet53(pretrained=True)).to(cfg.device)
     coder = YOLOv4_Coder(data_type='coco')
     criterion = YOLOv4_Loss(coder=coder)
@@ -147,7 +163,7 @@ if __name__ == '__main__':
     ## ---------------------
     img_size = 512
     num_obj = 5
-    img = torch.randn([4, 3, img_size, img_size]).to(cfg.device)
+    img = torch.randn([bs, 3, img_size, img_size]).to(cfg.device)
     gt_boxes = []
     gt_labels = []
     for b in range(bs):

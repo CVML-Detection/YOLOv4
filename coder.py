@@ -28,9 +28,22 @@ class YOLOv4_Coder(Coder):
         elif self.data_type == 'coco':
             self.num_classes = 80
     
-    def encode(self):
+    def encode(self, gt_boxes, gt_labels, stage):
+        """
+        :param gt_boxes (list)  :   (N,4)
+        :param gt_labels (list) :   (N)
+        :len(gt_boxes) : 4
+        """
+        # print('len(boxes) : {}'.format(len(boxes)))
+        # print('boxes: {}'.format(boxes[0].shape))
+        # print('labels: {}'.format(labels[0].shape))
 
-        return 0
+        batch_size = len(gt_boxes)
+        for b in range(batch_size):
+
+
+
+        return 1, 2, 3, 4, 5, 6
 
     def decode(self, p, stage):
         p = p.view(
