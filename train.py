@@ -8,7 +8,6 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
     model.train()
 
     for idx, datas in enumerate(train_loader):
-        print('========= DEBUGGING ========')
         images = datas[0]
         boxes = datas[1]
         labels = datas[2]

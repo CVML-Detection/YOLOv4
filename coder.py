@@ -90,11 +90,6 @@ class YOLOv4_Coder(Coder):
             center_gt_box = xy_to_cxcy(corner_gt_box)       # center bbox : (cx, cy, w, h) -> (0 ~ 1)
             # scaled_center_gt_box = center_gt_box * float(self.img_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
             scaled_center_gt_box = center_gt_box * float(grid_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
-
-            print('\t\t ==== FOR One Image ====')
-            print('\t\t 1th box : {}'.format(scaled_corner_gt_box[0]))
-            print('\t\t box shape : {}'.format(scaled_corner_gt_box.shape))
-            print('\t\t labels : {}'.format(label))
             
             bxby = scaled_center_gt_box[..., :2]    # [obj, 2] - cxcy
             proportion_of_xy = bxby - bxby.floor()  # [obj, 2] - 0 ~ 1
@@ -106,6 +101,10 @@ class YOLOv4_Coder(Coder):
 
             num_obj = corner_gt_box.size(0)
 
+            print('\t\t ==== FOR One Image ====')
+            print('\t\t 1th box : {}'.format(scaled_corner_gt_box[0]))
+            print('\t\t box shape : {}'.format(scaled_corner_gt_box.shape))
+            print('\t\t labels : {}'.format(label))
             print('\t\t iou_anchors_gt shape : {}'.format(iou_anchors_gt.shape))
             print('\t\t num_obj : {}'.format(num_obj))
 
@@ -131,7 +130,7 @@ class YOLOv4_Coder(Coder):
         # print('gt_objectness : {}'.format(gt_objectness.shape))
         # print('ignore_mask : {}'.format(ignore_mask.unsqueeze(-1).shape))
         # print('gt_classes : {}'.format(gt_classes.shape))
-        gt_label = torch.cat([gt_prop_txty, gt_twth, gt_objectness, ignore_mask.unsqueeze(-1), gt_classes], dim=-1)
+        gt_label = torch.cat([gt_prop_txty, gt_twth, gt_objectness, ignore_mask.unsqueeze(-1), gt_classes], dim=-1).to(device)
         print('gt_label:{}'.format(gt_label.shape))
 
         # FIXME 임시 코드
