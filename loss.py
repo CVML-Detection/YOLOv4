@@ -49,7 +49,7 @@ class YOLOv4_Loss(nn.Module):
         img_size = stride * grid
 
         # pred (decoded)
-        p_d_xywh = p_d[..., :4]
+        p_d_xywh = p_d[..., :4]     #[b, 64, 64, 3, 4]
         p_conf = p[..., 4:5]
         p_cls = p[..., 5:]
 
