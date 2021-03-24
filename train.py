@@ -17,11 +17,12 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
         boxes = [b.to(cfg.device) for b in boxes]
         labels = [l.to(cfg.device) for l in labels]
 
-        print('len(boxes) : {}'.format(len(boxes)))
+        print('batch_size : {}'.format(len(boxes)))
         print('images : {}'.format(images.shape))
+        print('object count : {}'.format(boxes[0].shape[0]))
         print('boxes : {}'.format(boxes[0].shape))
         print('labels : {}'.format(labels[0].shape))
-        
+
         pred = model(images)
         loss = criterion(pred, boxes, labels)
 

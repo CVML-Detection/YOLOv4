@@ -25,6 +25,7 @@ class YOLOv4_Anchor(Anchor):
         # Anchor (X, Y)
         stride = int(stride.item())
         grid_size = int(img_size/stride)
+        print('> creating Anchor...')
         print('grid_size:{}'.format(grid_size))
         
         grid_arange = np.arange(grid_size)
@@ -39,7 +40,8 @@ class YOLOv4_Anchor(Anchor):
         xy = xy.view(grid_size, grid_size, 1, 2).expand(grid_size, grid_size, 3, 2).type(torch.float32)  # centor ([g,g,2]=>[g,g,3,2])
         wh = anchor.view(1, 1, 3, 2).expand(grid_size, grid_size, 3, 2).type(torch.float32)  # w, h ([3,2]=>[g,g,3,2])
         center_anchors = torch.cat([xy, wh], dim=3).to(device)
-
+        #FIXME 확인 필요
+        # center_anchors = center_anchors * stride          # to img_size(512)
         return center_anchors
 
 

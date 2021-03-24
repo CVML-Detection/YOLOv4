@@ -25,25 +25,14 @@ class YOLOv4_Loss(nn.Module):
         p, p_d = list(zip(*output))
         # -----------------------------
 
-
-        # Encode GT (임시)
+        # Encode GT
         # -----------------------------
         batch_size = p[0].shape[0]
         output_en = []
-        gt_label_s, gt_boxes_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
-        gt_label_m, gt_boxes_m = self.coder.encode(gt_boxes, gt_labels, stage=1)
-        gt_label_l, gt_boxes_l = self.coder.encode(gt_boxes, gt_labels, stage=2)
+        gt_labels_en_s, gt_boxes_en_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
+        gt_labels_en_m, gt_boxes_en_m = self.coder.encode(gt_boxes, gt_labels, stage=1)
+        gt_labels_en_l, gt_boxes_en_l = self.coder.encode(gt_boxes, gt_labels, stage=2)
 
-
-        # 임시 코드
-        gt_labels_en_s = torch.randn([batch_size,64,64,3,86]).to(cfg.device)
-        gt_labels_en_m = torch.randn([batch_size,32,32,3,86]).to(cfg.device)
-        gt_labels_en_l = torch.randn([batch_size,16,16,3,86]).to(cfg.device)
-
-        gt_boxes_en_s = torch.randn([batch_size,150,4]).to(cfg.device)
-        gt_boxes_en_m = torch.randn([batch_size,150,4]).to(cfg.device)
-        gt_boxes_en_l = torch.randn([batch_size,150,4]).to(cfg.device)
-        # -----------------------------
         
         strides = self.coder.strides
         (loss_s, loss_s_ciou, loss_s_conf, loss_s_cls) = self.loss_per_layer(p[0], p_d[0], gt_labels_en_s, gt_boxes_en_s, strides[0])
@@ -80,12 +69,13 @@ class YOLOv4_Loss(nn.Module):
         # print('label_obj_mask : {}'.format(label_obj_mask.shape))
         # print('label_mix : {}'.format(label_mix.shape))
         # print('ciou : {}'.format(ciou.shape))
-        
         loss_ciou = label_obj_mask * bbox_loss_scale * (1.0 - ciou) * label_mix
         # print('loss_ciou : {}'.format(loss_ciou.shape))
 
         # 2) Conf Loss
         loss_conf = 0       # Focal Loss
+        print('bboxes: {}'.format(bboxes.shape))
+        print('bboxes2: {}'.format(bboxes.unsqueeze(1).unsqueeze(1).unsqueeze(1).shape))
 
         # 3) Cls Loss
         loss_cls = 0        # BCE
