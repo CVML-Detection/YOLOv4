@@ -30,12 +30,12 @@ class YOLOv4_Loss(nn.Module):
         # -----------------------------
         batch_size = p[0].shape[0]
         output_en = []
-        gt_label_s, gt_boxes_s = self.coder.encode(gt_boxes, gt_labels, stage=1)
-        gt_label_m, gt_boxes_m = self.coder.encode(gt_boxes, gt_labels, stage=2)
-        gt_label_l, gt_boxes_l = self.coder.encode(gt_boxes, gt_labels, stage=3)
+        gt_label_s, gt_boxes_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
+        gt_label_m, gt_boxes_m = self.coder.encode(gt_boxes, gt_labels, stage=1)
+        gt_label_l, gt_boxes_l = self.coder.encode(gt_boxes, gt_labels, stage=2)
 
 
-
+        # 임시 코드
         gt_labels_en_s = torch.randn([batch_size,64,64,3,86]).to(cfg.device)
         gt_labels_en_m = torch.randn([batch_size,32,32,3,86]).to(cfg.device)
         gt_labels_en_l = torch.randn([batch_size,16,16,3,86]).to(cfg.device)

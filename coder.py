@@ -3,7 +3,11 @@ import torch
 import torch.nn.functional as F
 from math import sqrt
 from abc import ABCMeta, abstractmethod
+
+from utils import cxcy_to_xy
+from anchor import YOLOv4_Anchor
 import config as cfg
+from config import device
 
 
 class Coder(metaclass=ABCMeta):
@@ -20,14 +24,19 @@ class YOLOv4_Coder(Coder):
         self.data_type = data_type
         self.anchors = torch.FloatTensor(cfg.MODEL["ANCHORS"])
         self.strides = torch.FloatTensor(cfg.MODEL["STRIDES"])
-        self.num_anchors = len(self.anchors[0])
+        self.img_size = cfg.MODEL["INPUT_IMG_SIZE"]
+        self.num_anchors = len(self.anchors[0])     # 3
+
+        self.ANCHOR_ = YOLOv4_Anchor()
+        self.c_anchor = self.ANCHOR_.create_anchors(self.anchors, self.strides, self.img_size)
 
         assert self.data_type in ['voc', 'coco']
         if self.data_type == 'voc':
             self.num_classes = 20
         elif self.data_type == 'coco':
             self.num_classes = 80
-    
+
+
     def encode(self, gt_boxes, gt_labels, stage):
         """
         :param gt_boxes (list)  :   (N,4)
@@ -37,13 +46,34 @@ class YOLOv4_Coder(Coder):
         # print('len(boxes) : {}'.format(len(boxes)))
         # print('boxes: {}'.format(boxes[0].shape))
         # print('labels: {}'.format(labels[0].shape))
+        # print('ANCHORS:{}'.format(self.anchors[0]))
+        self.assign_anchors_to_device()
 
+        stride = int(self.strides[stage].item())
+        grid_size = int(self.img_size/stride)
+
+        print('> In STAGE : {}'.format(stage))
+        print('\t>> stride : {} & grid_size : {}'.format(stride, grid_size))
+        print('\t>> c_anchor[{}]:{}'.format(stage, self.c_anchor[stage].shape))
+
+        center_anchor = self.c_anchor[stage]
+        corner_anchor = cxcy_to_xy(center_anchor).view(grid_size*grid_size*self.num_anchors, 4)     # (64, 64, 3, 4)
         batch_size = len(gt_boxes)
+
+        # (순서대로 x, y, w, h, conf(1), mix(1), cls(80))
+        gt_prop_txty = torch.zeros([batch_size, grid_size, grid_size, 3, 2])    # a proportion between (0 ~ 1) in a cell
+        gt_twth = torch.zeros([batch_size, grid_size, grid_size, 3, 2])     # ratio of gt box and anchor box
+        gt_objectness = torch.zeros([batch_size, grid_size, grid_size, 3, 1])   # maximum iou anchor (a obj assign a anc)
+        ignore_mask = torch.zeros([batch_size, grid_size, grid_size, 3])
+        gt_classes = torch.zeros([batch_size, grid_size, out_grid_sizesize, 3, self.num_classes])   # one-hot encoded class label
+
+
         for b in range(batch_size):
+            break
 
 
 
-        return 1, 2, 3, 4, 5, 6
+        return 1, 2
 
     def decode(self, p, stage):
         p = p.view(
@@ -88,3 +118,17 @@ class YOLOv4_Coder(Coder):
 
         # return prediction값 , decode된 값
         return (p, pred_bbox)       # 둘 다 [b, o, o, 3, 85]    (o = 64, 32, 16)
+
+            
+    def assign_anchors_to_device(self):
+        self.c_anchor[0] = self.c_anchor[0].to(device)
+        self.c_anchor[1] = self.c_anchor[1].to(device)
+        self.c_anchor[2] = self.c_anchor[2].to(device)
+
+
+    def assign_anchors_to_device(self):
+        self.c_anchor[0] = self.c_anchor[0].to('cpu')
+        self.c_anchor[1] = self.c_anchor[1].to('cpu')
+        self.c_anchor[2] = self.c_anchor[2].to('cpu')
+        
+
