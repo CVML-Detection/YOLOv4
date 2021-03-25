@@ -16,13 +16,27 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
         boxes = [b.to(cfg.device) for b in boxes]
         labels = [l.to(cfg.device) for l in labels]
 
-        print('batch_size : {}'.format(len(boxes)))
-        print('images : {}'.format(images.shape))
-        print('object count : {}'.format(boxes[0].shape[0]))
-        print('boxes : {}'.format(boxes[0].shape))
-        print('labels : {}'.format(labels[0].shape))
+        # print('batch_size : {}'.format(len(boxes)))
+        # print('images : {}'.format(images.shape))
+        # print('object count : {}'.format(boxes[0].shape[0]))
+        # print('boxes : {}'.format(boxes[0].shape))
+        # print('labels : {}'.format(labels[0].shape))
 
         pred = model(images)
         loss = criterion(pred, boxes, labels)
 
-        break
+        # sgd
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        toc = time.time()
+
+
+        # for each steps
+        if idx % 10 == 0 or idx == len(train_loader) - 1:
+            print('Epoch: [{0}]\t'
+                  'Step: [{1}/{2}]\t'
+                  'Loss: {loss:.4f}\t'
+                  'Time : {time:.4f}\t'
+                  .format(epoch, idx, len(train_loader), loss=loss, time=toc - tic))

@@ -23,6 +23,7 @@ def main():
     # vis = visdom.Visdom(port=opts.port)
     vis = None
 
+
     train_set = None
     test_set = None
 

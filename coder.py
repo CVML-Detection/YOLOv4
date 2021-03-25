@@ -66,10 +66,10 @@ class YOLOv4_Coder(Coder):
 
         center_anchor = self.c_anchor[stage]
         corner_anchor = cxcy_to_xy(center_anchor).view(grid_size*grid_size*self.num_anchors, 4)     # (64, 64, 3, 4)
-        print('\n==================================')
-        print('> In STAGE : {}'.format(stage))
-        print('\t>> stride : {} && grid_size : {}'.format(stride, grid_size))
-        print('\t>> c_anchor[{}] : {} && corner anchor count{}'.format(stage, self.c_anchor[stage].shape, corner_anchor.shape))
+        # print('\n==================================')
+        # print('> In STAGE : {}'.format(stage))
+        # print('\t>> stride : {} && grid_size : {}'.format(stride, grid_size))
+        # print('\t>> c_anchor[{}] : {} && corner anchor count{}'.format(stage, self.c_anchor[stage].shape, corner_anchor.shape))
 
         batch_size = len(gt_boxes)
 
@@ -85,11 +85,11 @@ class YOLOv4_Coder(Coder):
             label = gt_labels[b]
             corner_gt_box = gt_boxes[b]                     # corner bbox : (x1, y1, x2, y2) -> 비율로 되있음 (0 ~ 1)
             # scaled_corner_gt_box = corner_gt_box * float(self.img_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
-            scaled_corner_gt_box = corner_gt_box * float(grid_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
+            scaled_corner_gt_box = corner_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)
 
             center_gt_box = xy_to_cxcy(corner_gt_box)       # center bbox : (cx, cy, w, h) -> (0 ~ 1)
             # scaled_center_gt_box = center_gt_box * float(self.img_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
-            scaled_center_gt_box = center_gt_box * float(grid_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
+            scaled_center_gt_box = center_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)   # to img_size(512)
             
             bxby = scaled_center_gt_box[..., :2]    # [obj, 2] - cxcy
             proportion_of_xy = bxby - bxby.floor()  # [obj, 2] - 0 ~ 1
@@ -101,12 +101,12 @@ class YOLOv4_Coder(Coder):
 
             num_obj = corner_gt_box.size(0)
 
-            print('\t\t ==== FOR One Image ====')
-            print('\t\t 1th box : {}'.format(scaled_corner_gt_box[0]))
-            print('\t\t box shape : {}'.format(scaled_corner_gt_box.shape))
-            print('\t\t labels : {}'.format(label))
-            print('\t\t iou_anchors_gt shape : {}'.format(iou_anchors_gt.shape))
-            print('\t\t num_obj : {}'.format(num_obj))
+            # print('\t\t ==== FOR One Image ====')
+            # print('\t\t 1th box : {}'.format(scaled_corner_gt_box[0]))
+            # print('\t\t box shape : {}'.format(scaled_corner_gt_box.shape))
+            # print('\t\t labels : {}'.format(label))
+            # print('\t\t iou_anchors_gt shape : {}'.format(iou_anchors_gt.shape))
+            # print('\t\t num_obj : {}'.format(num_obj))
 
 
             for n_obj in range(num_obj):
@@ -131,7 +131,7 @@ class YOLOv4_Coder(Coder):
         # print('ignore_mask : {}'.format(ignore_mask.unsqueeze(-1).shape))
         # print('gt_classes : {}'.format(gt_classes.shape))
         gt_label = torch.cat([gt_prop_txty, gt_twth, gt_objectness, ignore_mask.unsqueeze(-1), gt_classes], dim=-1).to(device)
-        print('gt_label:{}'.format(gt_label.shape))
+        # print('gt_label:{}'.format(gt_label.shape))
 
         # FIXME 임시 코드
         gt_box = torch.randn([batch_size,150,4]).to(device)
