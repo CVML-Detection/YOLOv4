@@ -51,3 +51,13 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
                                    ylabel='Loss',
                                    title='training loss',
                                    legend=['Total Loss', 'CIoU Loss', 'CLS Loss']))
+    
+    if not os.path.exist(opts.save_path):
+        os.mkdir(opts.save_path)
+    
+    checkpoint = {'epoch': epoch,
+                  'model_state_dict': model.state_dict(),
+                  'optimizer_state_dict': optimizer.state_dict(),
+                  'scheduler_state_dict': scheduler.state_dict()}
+
+    torch.save(checkpoint, os.path.join(opts.save_path, opts.save_file_name + '.{}.pth.tar'.format(epoch)))
