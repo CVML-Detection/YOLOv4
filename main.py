@@ -20,8 +20,7 @@ cudnn.benchmark = True
 def main():
     opts = parse(sys.argv[1:])
     # 3. visdom
-    # vis = visdom.Visdom(port=opts.port)
-    vis = None
+    vis = visdom.Visdom(port=opts.port)
 
 
     train_set = None
@@ -92,7 +91,6 @@ def main():
             optimizer=optimizer,
             scheduler=scheduler,
             opts=opts)
-        break
         scheduler.step()
 
 

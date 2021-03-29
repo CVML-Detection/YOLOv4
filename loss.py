@@ -39,8 +39,10 @@ class YOLOv4_Loss(nn.Module):
         (loss_m, loss_m_ciou, loss_m_conf, loss_m_cls) = self.loss_per_layer(p[1], p_d[1], gt_labels_en_m, gt_boxes_en_m, strides[1])
         (loss_l, loss_l_ciou, loss_l_conf, loss_l_cls) = self.loss_per_layer(p[2], p_d[2], gt_labels_en_l, gt_boxes_en_l, strides[2])
         loss = loss_s + loss_m + loss_l
+        loss_ciou = loss_s_ciou + loss_m_ciou + loss_l_ciou
+        loss_cls = loss_s_cls + loss_m_cls + loss_l_cls
 
-        return loss
+        return loss, loss_ciou, loss_cls
 
 
     def loss_per_layer(self, p, p_d, label, bboxes, stride):
@@ -85,7 +87,7 @@ class YOLOv4_Loss(nn.Module):
         # loss_conf = (torch.sum(loss_conf)) / batch_size
         loss_cls = (torch.sum(loss_cls)) / batch_size
         # loss = loss_ciou + loss_conf + loss_cls
-        loss = loss_ciou
+        loss = loss_ciou + loss_cls
         
         return loss, loss_ciou, loss_conf, loss_cls
 

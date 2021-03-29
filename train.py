@@ -23,7 +23,7 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
         # print('labels : {}'.format(labels[0].shape))
 
         pred = model(images)
-        loss = criterion(pred, boxes, labels)
+        loss, loss_ciou, loss_cls = criterion(pred, boxes, labels)
 
         # sgd
         optimizer.zero_grad()
@@ -40,3 +40,14 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
                   'Loss: {loss:.4f}\t'
                   'Time : {time:.4f}\t'
                   .format(epoch, idx, len(train_loader), loss=loss, time=toc - tic))
+
+            if vis is not None:
+                # loss plot
+                vis.line(X=torch.ones((1, 3)).cpu() * idx + epoch * train_loader.__len__(),  # step
+                         Y=torch.Tensor([loss, loss_ciou, loss_cls]).unsqueeze(0).cpu(),
+                         win='train_loss',
+                         update='append',
+                         opts=dict(xlabel='step',
+                                   ylabel='Loss',
+                                   title='training loss',
+                                   legend=['Total Loss', 'CIoU Loss', 'CLS Loss']))
