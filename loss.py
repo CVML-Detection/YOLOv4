@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
     ## ---------------------
     img_size = 512
-    num_obj = 5
+    num_obj = 6
     img = torch.randn([bs, 3, img_size, img_size]).to(cfg.device)
     gt_boxes = []
     gt_labels = []

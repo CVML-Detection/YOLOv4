@@ -55,21 +55,18 @@ class YOLOv4_Coder(Coder):
         :param gt_labels (list) :   (N)
         :len(gt_boxes) : 4
         """
-        # print('len(boxes) : {}'.format(len(boxes)))
-        # print('boxes: {}'.format(boxes[0].shape))
-        # print('labels: {}'.format(labels[0].shape))
-        # print('ANCHORS:{}'.format(self.anchors[0]))
         self.assign_anchors_to_device()
 
         stride = int(self.strides[stage].item())
         grid_size = int(self.img_size/stride)
 
-        center_anchor = self.c_anchor[stage]
-        corner_anchor = cxcy_to_xy(center_anchor).view(grid_size*grid_size*self.num_anchors, 4)     # (64, 64, 3, 4)
-        # print('\n==================================')
-        # print('> In STAGE : {}'.format(stage))
-        # print('\t>> stride : {} && grid_size : {}'.format(stride, grid_size))
-        # print('\t>> c_anchor[{}] : {} && corner anchor count{}'.format(stage, self.c_anchor[stage].shape, corner_anchor.shape))
+        center_anchor = self.c_anchor[stage]                                                        # (gs, gs, 3, 4)
+        corner_anchor = cxcy_to_xy(center_anchor).view(grid_size*grid_size*self.num_anchors, 4)     # (gs, gs, 3, 4)
+        
+        print('\n==================================')
+        print('> In STAGE : {}'.format(stage))
+        print('\t>> stride : {} && grid_size : {}'.format(stride, grid_size))
+        print('\t>> c_anchor[{}] : {} && corner anchor count{}'.format(stage, self.c_anchor[stage].shape, corner_anchor.shape))
 
         batch_size = len(gt_boxes)
 
@@ -83,23 +80,23 @@ class YOLOv4_Coder(Coder):
         # 한 이미지에 대해서
         for b in range(batch_size):
             label = gt_labels[b]
-            corner_gt_box = gt_boxes[b]                     # corner bbox : (x1, y1, x2, y2) -> 비율로 되있음 (0 ~ 1)
-            # scaled_corner_gt_box = corner_gt_box * float(self.img_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
+            corner_gt_box = gt_boxes[b]             # [N, 4] && corner bbox : (x1, y1, x2, y2) -> 비율로 되있음 (0 ~ 1)
             scaled_corner_gt_box = corner_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)
 
             center_gt_box = xy_to_cxcy(corner_gt_box)       # center bbox : (cx, cy, w, h) -> (0 ~ 1)
-            # scaled_center_gt_box = center_gt_box * float(self.img_size)     # img size로 맞춰줘 (0 ~ 512)   # to img_size(512)
-            scaled_center_gt_box = center_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)   # to img_size(512)
+            scaled_center_gt_box = center_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)
             
-            bxby = scaled_center_gt_box[..., :2]    # [obj, 2] - cxcy
-            proportion_of_xy = bxby - bxby.floor()  # [obj, 2] - 0 ~ 1
-            bwbh = scaled_center_gt_box[..., 2:]    # [obj, 2] - wh
+            bxby = scaled_center_gt_box[..., :2]    # [N, 2] - cxcy
+            proportion_of_xy = bxby - bxby.floor()  # [N, 2] - 0 ~ 1
+            bwbh = scaled_center_gt_box[..., 2:]    # [N, 2] - wh
 
             # (64*64*3 , 4) , (3, 4)
             iou_anchors_gt = find_jaccard_overlap(corner_anchor, scaled_corner_gt_box)
-            iou_anchors_gt = iou_anchors_gt.view(grid_size, grid_size, 3, -1)
+            iou_anchors_gt = iou_anchors_gt.view(grid_size, grid_size, 3, -1)   # [gs, gs, 3, 5]
+            print('\t>> test : {}'.format(iou_anchors_gt.shape))
 
             num_obj = corner_gt_box.size(0)
+            print('\t>> n_obj: {}'.format(num_obj))
 
             # print('\t\t ==== FOR One Image ====')
             # print('\t\t 1th box : {}'.format(scaled_corner_gt_box[0]))

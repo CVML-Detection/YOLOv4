@@ -1,6 +1,7 @@
 import torch
 import config as cfg
 import time
+import os
 
 
 def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts):
@@ -52,8 +53,8 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
                                    title='training loss',
                                    legend=['Total Loss', 'CIoU Loss', 'CLS Loss']))
     
-    if not os.path.exist(opts.save_path):
-        os.mkdir(opts.save_path)
+    # if not os.path.exist(opts.save_path):
+    #     os.mkdir(opts.save_path)
     
     checkpoint = {'epoch': epoch,
                   'model_state_dict': model.state_dict(),

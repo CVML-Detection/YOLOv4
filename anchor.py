@@ -4,6 +4,8 @@ from math import sqrt
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from config import device
+
+import config as cfg
 from utils import cxcy_to_xy
 
 
@@ -26,6 +28,7 @@ class YOLOv4_Anchor(Anchor):
         stride = int(stride.item())
         grid_size = int(img_size/stride)
         print('> creating Anchor...')
+        print('stride:{}'.format(stride))
         print('grid_size:{}'.format(grid_size))
         
         grid_arange = np.arange(grid_size)
@@ -39,7 +42,8 @@ class YOLOv4_Anchor(Anchor):
         # Get xy & wh
         xy = xy.view(grid_size, grid_size, 1, 2).expand(grid_size, grid_size, 3, 2).type(torch.float32)  # centor ([g,g,2]=>[g,g,3,2])
         wh = anchor.view(1, 1, 3, 2).expand(grid_size, grid_size, 3, 2).type(torch.float32)  # w, h ([3,2]=>[g,g,3,2])
-        center_anchors = torch.cat([xy, wh], dim=3).to(device)
+        wh = wh * stride
+        center_anchors = torch.cat([xy, wh], dim=3).to(device)  # [g,g,3,4]
         #FIXME 확인 필요
         # center_anchors = center_anchors * stride          # to img_size(512)
         return center_anchors
@@ -54,3 +58,13 @@ class YOLOv4_Anchor(Anchor):
         return [center_anchors_0, center_anchors_1, center_anchors_2]
 
 
+if __name__ == "__main__":
+    anchors = torch.FloatTensor(cfg.MODEL["ANCHORS"])
+    strides = torch.FloatTensor(cfg.MODEL["STRIDES"])
+    img_size = cfg.MODEL["INPUT_IMG_SIZE"]
+
+    ANCHOR_ = YOLOv4_Anchor()
+    anchor_c = ANCHOR_.create_anchors(anchors, strides, img_size)
+
+    print(anchor_c[0].shape)
+    print(anchor_c[0][32][32])

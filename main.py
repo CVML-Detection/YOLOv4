@@ -42,7 +42,7 @@ def main():
                                                batch_size=opts.batch_size,
                                                collate_fn=train_set.collate_fn,
                                                shuffle=True,
-                                               num_workers=8,
+                                               num_workers=0,
                                                pin_memory=True)
 
     test_loader = torch.utils.data.DataLoader(test_set,
