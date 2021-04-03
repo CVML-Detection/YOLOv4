@@ -82,6 +82,7 @@ class YOLOv4_Coder(Coder):
             label = gt_labels[b]
             corner_gt_box = gt_boxes[b]             # [N, 4] && corner bbox : (x1, y1, x2, y2) -> 비율로 되있음 (0 ~ 1)
             scaled_corner_gt_box = corner_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)
+            num_obj = corner_gt_box.size(0)
 
             center_gt_box = xy_to_cxcy(corner_gt_box)       # center bbox : (cx, cy, w, h) -> (0 ~ 1)
             scaled_center_gt_box = center_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)
@@ -93,10 +94,7 @@ class YOLOv4_Coder(Coder):
             # (64*64*3 , 4) , (3, 4)
             iou_anchors_gt = find_jaccard_overlap(corner_anchor, scaled_corner_gt_box)
             iou_anchors_gt = iou_anchors_gt.view(grid_size, grid_size, 3, -1)   # [gs, gs, 3, 5]
-            print('\t>> test : {}'.format(iou_anchors_gt.shape))
 
-            num_obj = corner_gt_box.size(0)
-            print('\t>> n_obj: {}'.format(num_obj))
 
             # print('\t\t ==== FOR One Image ====')
             # print('\t\t 1th box : {}'.format(scaled_corner_gt_box[0]))
