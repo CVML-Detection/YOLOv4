@@ -14,23 +14,23 @@ class YOLOv4_Loss(nn.Module):
         
 
     def forward(self, pred, gt_boxes, gt_labels):
-
+        # -----------------------------
         # Decode Pred
         # -----------------------------
         output = []
-        [[f1, f2, f3], atten] = pred
+        [[f1, f2, f3], atten] = pred        # [b,255,64,64], [b,255,32,32], [b,255,16,16]
         output.append(self.coder.decode(p=f1, stage=0))  # [4, 64, 64, 3, 85]   p[0], p_d[0]
         output.append(self.coder.decode(p=f2, stage=1))  # [4, 32, 32, 3, 85]   p[1], p_d[1]
         output.append(self.coder.decode(p=f3, stage=2))  # [4, 16, 16, 3, 85]   p[2], p_d[2]
         p, p_d = list(zip(*output))
+        
         # -----------------------------
-
         # Encode GT
         # -----------------------------
         batch_size = p[0].shape[0]
         output_en = []
-        gt_labels_en_s, gt_boxes_en_s = self.coder.encode_new(gt_boxes, gt_labels)
-        gt_labels_en_s, gt_boxes_en_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
+        gt, gt_en = self.coder.encode_new(gt_boxes, gt_labels)
+        # gt_labels_en_s, gt_boxes_en_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
 
         
         strides = self.coder.strides

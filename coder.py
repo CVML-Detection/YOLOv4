@@ -85,7 +85,7 @@ class YOLOv4_Coder(Coder):
 
         self.assign_anchors_to_device()
 
-        # for 1 IMAGE
+        # For Each IMAGE in Batch
         for b in range(batch_size):
             label = gt_labels[b]                        # [N]
             corner_gt_box = gt_boxes[b]                 # [N, 4] 
@@ -109,10 +109,42 @@ class YOLOv4_Coder(Coder):
                 iou_anchors_gt.append(find_jaccard_overlap(self.xy_anchor[stg], scaled_corner_gt_box[stg]))      # 각 앵커들에 대한 IOU 계산 [gsxgsx3 , num_obj]
                 iou_anchors_gt[stg] = iou_anchors_gt[stg].view(grid_size[stg], grid_size[stg], self.num_anchors, -1)       # [gs, gs, 3, num_obj]
             
-            print('debug')
+            # For Each Object 각 gt bbox에 대해
+            for n_obj in range(num_obj):
+                # best_stg : 0 -> Stage 0 has best IoU
+                # best_stg : 1 -> Stage 1 has best IoU
+                # best_stg : 2 -> Stage 2 has best IoU
+                best_stg = torch.FloatTensor(
+                    [iou_anchors_gt[0][..., n_obj].max(),
+                    iou_anchors_gt[1][..., n_obj].max(),
+                    iou_anchors_gt[2][..., n_obj].max()]).argmax()
+                
+                # 해당 gt box의 x, y
+                #   FIXME gt box 0~1에서 0~64가 되었고, 완벽한 크기 (512)가 아닌 소수점이 있는 상황에서 int로 변형, 
+                #   FIXME 그 후 grid 내에서의 위치 (proportion) 값을 Container에 넣는다.
+                cx, cy = bxby[best_stg][n_obj]
+                cx = int(cx)
+                cy = int(cy)
+                max_iou, max_idx = iou_anchors_gt[best_stg][cy, cx, :, n_obj].max(0)    # anchor 3 개중에 IoU 가 큰 것 쓰기
+                gt_prop_txty[best_stg][b, cy, cx, max_idx, :] = proportion_of_xy[best_stg][n_obj]
+
+                gt_twth[best_stg][b, cy, cx, max_idx, :] = torch.log(bwbh[best_stg][n_obj] / torch.from_numpy(np.array(self.anchors[best_stg][max_idx]) / stride[best_stg]).to(device))
+
+                gt_objectness[best_stg][b, cy, cx, max_idx, 0] = 1
+                gt_classes[best_stg][b, cy, cx, max_idx, int(label[n_obj].item())] = 1
+
+            for i in range(3):
+                gt_ignore_mask[i][b] = (iou_anchors_gt[i].max(-1)[0] < 0.5)
+
+        print('debugging')
+        result = []
+        result_en = []  # 여기에 512 넣기
+
+        for stg in range(3):
+            result.append(torch.cat([gt_prop_txty[stg], gt_twth[stg], gt_objectness[stg], gt_ignore_mask[stg].unsqueeze(-1), gt_classes[stg]], dim=-1).to(device))
         
-
-
+        return result, result_en
+        
     def encode(self, gt_boxes, gt_labels, stage):
         """
         :param gt_boxes (list)  :   (N,4)
