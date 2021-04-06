@@ -29,9 +29,8 @@ class YOLOv4_Loss(nn.Module):
         # -----------------------------
         batch_size = p[0].shape[0]
         output_en = []
+        gt_labels_en_s, gt_boxes_en_s = self.coder.encode_new(gt_boxes, gt_labels)
         gt_labels_en_s, gt_boxes_en_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
-        gt_labels_en_m, gt_boxes_en_m = self.coder.encode(gt_boxes, gt_labels, stage=1)
-        gt_labels_en_l, gt_boxes_en_l = self.coder.encode(gt_boxes, gt_labels, stage=2)
 
         
         strides = self.coder.strides

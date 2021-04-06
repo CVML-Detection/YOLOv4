@@ -38,15 +38,79 @@ class YOLOv4_Coder(Coder):
 
             
     def assign_anchors_to_device(self):
-        self.c_anchor[0] = self.c_anchor[0].to(device)
-        self.c_anchor[1] = self.c_anchor[1].to(device)
-        self.c_anchor[2] = self.c_anchor[2].to(device)
+        for i in range(3):
+            self.c_anchor[i] = self.c_anchor[i].to(device)
+            self.xy_anchor[i] = self.xy_anchor[i].to(device)
 
 
     def assign_anchors_to_cpu(self):
-        self.c_anchor[0] = self.c_anchor[0].to('cpu')
-        self.c_anchor[1] = self.c_anchor[1].to('cpu')
-        self.c_anchor[2] = self.c_anchor[2].to('cpu')
+        for i in range(3):
+            self.c_anchor[i] = self.c_anchor[i].to('cpu')
+            self.xy_anchor[i] = self.xy_anchor[i].to('cpu')
+
+
+    def encode_new(self, gt_boxes, gt_labels):
+        """
+        :param gt_boxes (list)  :   (N,4)
+        :param gt_labels (list) :   (N)
+        :len(gt_boxes) : 4
+        """
+        batch_size = len(gt_boxes)
+        stride=[]               # [8, 16, 32]   for each stage 0, 1, 2
+        grid_size=[]            # [64, 32, 16]
+
+        gt_ignore_mask = []
+        gt_prop_txty = []
+        gt_twth = []
+        gt_objectness = []
+        gt_classes = []
+
+        self.xy_anchor=[]
+
+        # Stage 0, 1, 2에 대해서
+        for stg in range(3):
+            stride.append(int(self.strides[stg].item()))
+            grid_size.append(int(self.img_size/stride[stg]))
+            
+            # ---- 1. Container 만들기 ----
+            gt_ignore_mask.append(torch.zeros([batch_size, grid_size[stg], grid_size[stg], self.num_anchors]))      # [b, 64, 64, 3]
+            gt_prop_txty.append(torch.zeros([batch_size, grid_size[stg], grid_size[stg], self.num_anchors, 2]))
+            gt_twth.append(torch.zeros([batch_size, grid_size[stg], grid_size[stg], self.num_anchors, 2]))
+            gt_objectness.append(torch.zeros([batch_size, grid_size[stg], grid_size[stg], self.num_anchors, 1]))
+            gt_classes.append(torch.zeros([batch_size, grid_size[stg], grid_size[stg], self.num_anchors, self.num_classes]))
+
+            # ---- 2. Anchor 만들기 ----
+            # self.c_anchor && self.xy_anchor      ex) Stage 0 Anchor : xy_anchor[0]  //  Stage 1 Anchor : xy_anchor[1]
+            self.xy_anchor.append(cxcy_to_xy(self.c_anchor[stg]).view(grid_size[stg]*grid_size[stg]*self.num_anchors, 4))
+
+        self.assign_anchors_to_device()
+
+        # for 1 IMAGE
+        for b in range(batch_size):
+            label = gt_labels[b]                        # [N]
+            corner_gt_box = gt_boxes[b]                 # [N, 4] 
+            center_gt_box = xy_to_cxcy(corner_gt_box)   # [N, 4] -> 비율로 되있음 (0 ~ 1)
+            num_obj = corner_gt_box.size(0)
+            scaled_corner_gt_box = []
+            scaled_center_gt_box = []
+            iou_anchors_gt = []
+            bxby = []
+            proportion_of_xy = []
+            bwbh = []
+
+            for stg in range(3):
+                scaled_corner_gt_box.append(corner_gt_box * float(grid_size[stg]))  # grid size로 맞춰줘 (0 ~ 64)
+                scaled_center_gt_box.append(center_gt_box * float(grid_size[stg]))
+
+                bxby.append(scaled_center_gt_box[stg][..., :2])          # [N, 2] cx cy
+                proportion_of_xy.append(bxby[stg] - bxby[stg].floor())   # [N, 2] (0~1)
+                bwbh.append(scaled_center_gt_box[stg][..., 2:])          # [N, 2] w h
+                
+                iou_anchors_gt.append(find_jaccard_overlap(self.xy_anchor[stg], scaled_corner_gt_box[stg]))      # 각 앵커들에 대한 IOU 계산 [gsxgsx3 , num_obj]
+                iou_anchors_gt[stg] = iou_anchors_gt[stg].view(grid_size[stg], grid_size[stg], self.num_anchors, -1)       # [gs, gs, 3, num_obj]
+            
+            print('debug')
+        
 
 
     def encode(self, gt_boxes, gt_labels, stage):
