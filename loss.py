@@ -28,8 +28,7 @@ class YOLOv4_Loss(nn.Module):
         # Encode GT
         # -----------------------------
         batch_size = p[0].shape[0]
-        output_en = []
-        gt, gt_en = self.coder.encode_new(gt_boxes, gt_labels)
+        gt, gt_en = self.coder.encode(gt_boxes, gt_labels)
         # gt_labels_en_s, gt_boxes_en_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
 
         

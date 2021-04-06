@@ -49,7 +49,7 @@ class YOLOv4_Coder(Coder):
             self.xy_anchor[i] = self.xy_anchor[i].to('cpu')
 
 
-    def encode_new(self, gt_boxes, gt_labels):
+    def encode(self, gt_boxes, gt_labels):
         """
         :param gt_boxes (list)  :   (N,4)
         :param gt_labels (list) :   (N)
@@ -136,98 +136,31 @@ class YOLOv4_Coder(Coder):
             for i in range(3):
                 gt_ignore_mask[i][b] = (iou_anchors_gt[i].max(-1)[0] < 0.5)
 
-        print('debugging')
         result = []
-        result_en = []  # 여기에 512 넣기
+        result_en = []  
 
+        # 512 만들어 주기
         for stg in range(3):
             result.append(torch.cat([gt_prop_txty[stg], gt_twth[stg], gt_objectness[stg], gt_ignore_mask[stg].unsqueeze(-1), gt_classes[stg]], dim=-1).to(device))
-        
-        return result, result_en
-        
-    def encode(self, gt_boxes, gt_labels, stage):
-        """
-        :param gt_boxes (list)  :   (N,4)
-        :param gt_labels (list) :   (N)
-        :len(gt_boxes) : 4
-        """
-        self.assign_anchors_to_device()
+            result_en.append(result[stg].clone())
 
-        stride = int(self.strides[stage].item())
-        grid_size = int(self.img_size/stride)
+            xy_raw = result_en[stg][:,:,:,:,0:2] # [b, gs, gs, 3, 2]
+            wh_raw = result_en[stg][:,:,:,:,2:4] # [b, gs, gs, 3, 2]
+            rest_raw = result_en[stg][:,:,:,:,4:]  # rest [b, gs, gs, 3, 82]
 
-        center_anchor = self.c_anchor[stage]                                                        # (gs, gs, 3, 4)
-        corner_anchor = cxcy_to_xy(center_anchor).view(grid_size*grid_size*self.num_anchors, 4)     # (gs, gs, 3, 4)
-        
-        print('\n==================================')
-        print('> In STAGE : {}'.format(stage))
-        print('\t>> stride : {} && grid_size : {}'.format(stride, grid_size))
-        print('\t>> c_anchor[{}] : {} && corner anchor count{}'.format(stage, self.c_anchor[stage].shape, corner_anchor.shape))
-
-        batch_size = len(gt_boxes)
-
-        # (순서대로 x, y, w, h, conf(1), mix(1), cls(80))   (2+2+1+1+80 = 86)
-        gt_prop_txty = torch.zeros([batch_size, grid_size, grid_size, 3, 2])    # a proportion between (0 ~ 1) in a cell
-        gt_twth = torch.zeros([batch_size, grid_size, grid_size, 3, 2])     # ratio of gt box and anchor box
-        gt_objectness = torch.zeros([batch_size, grid_size, grid_size, 3, 1])   # maximum iou anchor (a obj assign a anc)
-        ignore_mask = torch.zeros([batch_size, grid_size, grid_size, 3])
-        gt_classes = torch.zeros([batch_size, grid_size, grid_size, 3, self.num_classes])   # one-hot encoded class label
-
-        # 한 이미지에 대해서
-        for b in range(batch_size):
-            label = gt_labels[b]
-            corner_gt_box = gt_boxes[b]             # [N, 4] && corner bbox : (x1, y1, x2, y2) -> 비율로 되있음 (0 ~ 1)
-            scaled_corner_gt_box = corner_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)
-            num_obj = corner_gt_box.size(0)
-
-            center_gt_box = xy_to_cxcy(corner_gt_box)       # center bbox : (cx, cy, w, h) -> (0 ~ 1)
-            scaled_center_gt_box = center_gt_box * float(grid_size)     # grid size로 맞춰줘 (0 ~ 64)
             
-            bxby = scaled_center_gt_box[..., :2]    # [N, 2] - cxcy
-            proportion_of_xy = bxby - bxby.floor()  # [N, 2] - 0 ~ 1
-            bwbh = scaled_center_gt_box[..., 2:]    # [N, 2] - wh
+            y = torch.arange(0, grid_size[stg]).unsqueeze(1).repeat(1, grid_size[stg])    # torch.Size([64, 64])  row0 : [0, 1 ... 64]
+            x = torch.arange(0, grid_size[stg]).unsqueeze(0).repeat(grid_size[stg], 1)    # torch.Size([64, 64])  row0 : [0, 0 ... 0]
+            grid_xy = torch.stack([x,y], dim=-1)
+            grid_xy = grid_xy.unsqueeze(0).unsqueeze(3).repeat(batch_size, 1, 1, 3, 1).float().to(device)   # [b, 64, 64, 3, 2] 로 복사
 
-            # (64*64*3 , 4) , (3, 4)
-            iou_anchors_gt = find_jaccard_overlap(corner_anchor, scaled_corner_gt_box)
-            iou_anchors_gt = iou_anchors_gt.view(grid_size, grid_size, 3, -1)   # [gs, gs, 3, 5]
+            scaled_gt_xy = (xy_raw + grid_xy) * stride[stg]
+            scaled_gt_wh = (torch.exp(wh_raw)) * stride[stg]        #FIXME exp 때리는게 맞나?
+            result_en[stg] = torch.cat([scaled_gt_xy, scaled_gt_wh, rest_raw], dim=-1)
+            print(result_en[stg].shape)
 
+        return result, result_en
 
-            # print('\t\t ==== FOR One Image ====')
-            # print('\t\t 1th box : {}'.format(scaled_corner_gt_box[0]))
-            # print('\t\t box shape : {}'.format(scaled_corner_gt_box.shape))
-            # print('\t\t labels : {}'.format(label))
-            # print('\t\t iou_anchors_gt shape : {}'.format(iou_anchors_gt.shape))
-            # print('\t\t num_obj : {}'.format(num_obj))
-
-
-            for n_obj in range(num_obj):
-                cx, cy = bxby[n_obj]
-                cx = int(cx)
-                cy = int(cy)
-
-                max_iou, max_idx = iou_anchors_gt[cy, cx, :, n_obj].max(0)  # which anchor has maximum iou?
-                j = max_idx  # j is idx.
-                gt_objectness[b, cy, cx, j, 0] = 1
-                gt_prop_txty[b, cy, cx, j, :] = proportion_of_xy[n_obj]
-                ratio_of_wh = bwbh[n_obj] / torch.from_numpy(np.array(self.anchors[stage][j])).to(device)
-
-                gt_twth[b, cy, cx, j, :] = torch.log(ratio_of_wh)
-                gt_classes[b, cy, cx, j, int(label[n_obj].item())] = 1
-
-            ignore_mask[b] = (iou_anchors_gt.max(-1)[0] < 0.5)
-
-        # print('gt_prop_txty : {}'.format(gt_prop_txty.shape))
-        # print('gt_twth : {}'.format(gt_twth.shape))
-        # print('gt_objectness : {}'.format(gt_objectness.shape))
-        # print('ignore_mask : {}'.format(ignore_mask.unsqueeze(-1).shape))
-        # print('gt_classes : {}'.format(gt_classes.shape))
-        gt_label = torch.cat([gt_prop_txty, gt_twth, gt_objectness, ignore_mask.unsqueeze(-1), gt_classes], dim=-1).to(device)
-        # print('gt_label:{}'.format(gt_label.shape))
-
-        # FIXME 임시 코드
-        gt_box = torch.randn([batch_size,150,4]).to(device)
-
-        return gt_label, gt_box
 
     def decode(self, p, stage):
         p = p.view(
@@ -260,7 +193,6 @@ class YOLOv4_Coder(Coder):
 
 
         pred_xy = (torch.sigmoid(conv_raw_dxdy) + grid_xy) * stride
-        
         pred_wh = (torch.exp(conv_raw_dwdh) * anchors) * stride
 
         pred_xywh = torch.cat([pred_xy, pred_wh], dim=-1)
