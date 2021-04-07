@@ -33,17 +33,16 @@ class YOLOv4_Loss(nn.Module):
 
         
         strides = self.coder.strides
-        (loss_s, loss_s_ciou, loss_s_conf, loss_s_cls) = self.loss_per_layer(p[0], p_d[0], gt_labels_en_s, gt_boxes_en_s, strides[0])
-        (loss_m, loss_m_ciou, loss_m_conf, loss_m_cls) = self.loss_per_layer(p[1], p_d[1], gt_labels_en_m, gt_boxes_en_m, strides[1])
-        (loss_l, loss_l_ciou, loss_l_conf, loss_l_cls) = self.loss_per_layer(p[2], p_d[2], gt_labels_en_l, gt_boxes_en_l, strides[2])
+        (loss_s, loss_s_ciou, loss_s_conf, loss_s_cls) = self.loss_per_layer(p[0], p_d[0], gt[0], gt_en[0], strides[0])
+        (loss_m, loss_m_ciou, loss_m_conf, loss_m_cls) = self.loss_per_layer(p[1], p_d[1], gt[1], gt_en[1], strides[1])
+        (loss_l, loss_l_ciou, loss_l_conf, loss_l_cls) = self.loss_per_layer(p[2], p_d[2], gt[2], gt_en[2], strides[2])
         loss = loss_s + loss_m + loss_l
         loss_ciou = loss_s_ciou + loss_m_ciou + loss_l_ciou
         loss_cls = loss_s_cls + loss_m_cls + loss_l_cls
-
         return loss, loss_ciou, loss_cls
 
 
-    def loss_per_layer(self, p, p_d, label, bboxes, stride):
+    def loss_per_layer(self, p, p_d, gt, gt_en, stride):
         BCE = nn.BCEWithLogitsLoss(reduction="none")
 
         batch_size, grid = p.shape[:2]
@@ -55,10 +54,10 @@ class YOLOv4_Loss(nn.Module):
         p_cls = p[..., 5:]
 
         # gt (encoded)          [b, gs, gs, 3, 86]
-        label_xywh = label[..., :4]
-        label_obj_mask = label[..., 4:5]
-        label_mix = label[..., 5:6]
-        label_cls = label[..., 6:]
+        label_xywh = gt_en[..., :4]
+        label_obj_mask = gt[..., 4:5]
+        label_mix = gt[..., 5:6]
+        label_cls = gt[..., 6:]
 
         # Calculating Loss
         # 1) CIoU
@@ -66,28 +65,21 @@ class YOLOv4_Loss(nn.Module):
 
         # The scaled weight of bbox is used to balance the impact of small objects and large objects on loss.
         bbox_loss_scale = 2.0 - 1.0 * label_xywh[..., 2:3] * label_xywh[..., 3:4] / (img_size ** 2)     # [b,grid,grid,3,1]
-        # print('bbox_loss_scale : {}'.format(bbox_loss_scale.shape))
-        # print('label_obj_mask : {}'.format(label_obj_mask.shape))
-        # print('label_mix : {}'.format(label_mix.shape))
-        # print('ciou : {}'.format(ciou.shape))
         loss_ciou = label_obj_mask * bbox_loss_scale * (1.0 - ciou) * label_mix
-        # print('loss_ciou : {}'.format(loss_ciou.shape))
 
         # 2) Conf Loss      # Focal Loss
         loss_conf = 0
-        # print('bboxes: {}'.format(bboxes.shape))
-        # print('bboxes2: {}'.format(bboxes.unsqueeze(1).unsqueeze(1).unsqueeze(1).shape))
 
         # 3) Cls Loss       # BCE
         loss_cls = (label_obj_mask * BCE(input=p_cls, target=label_cls) * label_mix)
 
         loss_ciou = (torch.sum(loss_ciou)) / batch_size
         # loss_conf = (torch.sum(loss_conf)) / batch_size
-        loss_cls = (torch.sum(loss_cls)) / batch_size
+        # loss_cls = (torch.sum(loss_cls)) / batch_size
         # loss = loss_ciou + loss_conf + loss_cls
         loss = loss_ciou + loss_cls
         
-        return loss, loss_ciou, loss_conf, loss_cls
+        return loss, loss_ciou, 0, loss_cls
 
 
     def CIOU_xywh_torch(self, boxes1, boxes2):

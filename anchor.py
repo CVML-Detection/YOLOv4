@@ -44,8 +44,6 @@ class YOLOv4_Anchor(Anchor):
         wh = anchor.view(1, 1, 3, 2).expand(grid_size, grid_size, 3, 2).type(torch.float32)  # w, h ([3,2]=>[g,g,3,2])
         wh = wh * stride
         center_anchors = torch.cat([xy, wh], dim=3).to(device)  # [g,g,3,4]
-        #FIXME 확인 필요
-        # center_anchors = center_anchors * stride          # to img_size(512)
         return center_anchors
 
 

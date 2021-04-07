@@ -128,7 +128,9 @@ class YOLOv4_Coder(Coder):
                 max_iou, max_idx = iou_anchors_gt[best_stg][cy, cx, :, n_obj].max(0)    # anchor 3 개중에 IoU 가 큰 것 쓰기
                 gt_prop_txty[best_stg][b, cy, cx, max_idx, :] = proportion_of_xy[best_stg][n_obj]
 
-                gt_twth[best_stg][b, cy, cx, max_idx, :] = torch.log(bwbh[best_stg][n_obj] / torch.from_numpy(np.array(self.anchors[best_stg][max_idx]) / stride[best_stg]).to(device))
+                # FIXME
+                # gt_twth[best_stg][b, cy, cx, max_idx, :] = torch.log(bwbh[best_stg][n_obj] / torch.from_numpy(np.array(self.anchors[best_stg][max_idx]) / stride[best_stg]).to(device))
+                gt_twth[best_stg][b, cy, cx, max_idx, :] = torch.log(bwbh[best_stg][n_obj] / torch.from_numpy(np.array(self.anchors[best_stg][max_idx])).to(device))
 
                 gt_objectness[best_stg][b, cy, cx, max_idx, 0] = 1
                 gt_classes[best_stg][b, cy, cx, max_idx, int(label[n_obj].item())] = 1
@@ -142,6 +144,7 @@ class YOLOv4_Coder(Coder):
         # 512 만들어 주기
         for stg in range(3):
             result.append(torch.cat([gt_prop_txty[stg], gt_twth[stg], gt_objectness[stg], gt_ignore_mask[stg].unsqueeze(-1), gt_classes[stg]], dim=-1).to(device))
+            # FIXME 이렇게 해도 되나?
             result_en.append(result[stg].clone())
 
             xy_raw = result_en[stg][:,:,:,:,0:2] # [b, gs, gs, 3, 2]
@@ -155,7 +158,7 @@ class YOLOv4_Coder(Coder):
             grid_xy = grid_xy.unsqueeze(0).unsqueeze(3).repeat(batch_size, 1, 1, 3, 1).float().to(device)   # [b, 64, 64, 3, 2] 로 복사
 
             scaled_gt_xy = (xy_raw + grid_xy) * stride[stg]
-            scaled_gt_wh = (torch.exp(wh_raw)) * stride[stg]        #FIXME exp 때리는게 맞나?
+            scaled_gt_wh = (torch.exp(wh_raw)*(self.anchors[stg].to(device))) * stride[stg]        #FIXME exp 때리는게 맞나?
             result_en[stg] = torch.cat([scaled_gt_xy, scaled_gt_wh, rest_raw], dim=-1)
             print(result_en[stg].shape)
 
