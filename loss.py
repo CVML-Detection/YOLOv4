@@ -75,7 +75,7 @@ class YOLOv4_Loss(nn.Module):
 
         loss_ciou = (torch.sum(loss_ciou)) / batch_size
         # loss_conf = (torch.sum(loss_conf)) / batch_size
-        # loss_cls = (torch.sum(loss_cls)) / batch_size
+        loss_cls = (torch.sum(loss_cls)) / batch_size
         # loss = loss_ciou + loss_conf + loss_cls
         loss = loss_ciou + loss_cls
         

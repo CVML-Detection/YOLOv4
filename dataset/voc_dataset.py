@@ -27,10 +27,10 @@ def download_voc(root_dir='D:\data\\voc', remove_compressed_file=True):
     if (os.path.exists(os.path.join(root_dir, 'VOCtrainval_11-May-2012')) and
         os.path.exists(os.path.join(root_dir, 'VOCtrainval_06-Nov-2007')) and
         os.path.exists(os.path.join(root_dir, 'VOCtest_06-Nov-2007'))):
-        print("Already exist!")
+        print("VOC Dataset : Already exist!")
         return
 
-    print("Download...")
+    print("VOC Dataset : Download...")
 
     wget.download(url=voc_2012_train_url, out=root_dir, bar=bar_custom)
     print('')

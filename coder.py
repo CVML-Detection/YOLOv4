@@ -160,7 +160,6 @@ class YOLOv4_Coder(Coder):
             scaled_gt_xy = (xy_raw + grid_xy) * stride[stg]
             scaled_gt_wh = (torch.exp(wh_raw)*(self.anchors[stg].to(device))) * stride[stg]        #FIXME exp 때리는게 맞나?
             result_en[stg] = torch.cat([scaled_gt_xy, scaled_gt_wh, rest_raw], dim=-1)
-            print(result_en[stg].shape)
 
         return result, result_en
 

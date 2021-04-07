@@ -27,9 +27,9 @@ class YOLOv4_Anchor(Anchor):
         # Anchor (X, Y)
         stride = int(stride.item())
         grid_size = int(img_size/stride)
-        print('> creating Anchor...')
-        print('stride:{}'.format(stride))
-        print('grid_size:{}'.format(grid_size))
+        # print('> creating Anchor...')
+        # print('stride:{}'.format(stride))
+        # print('grid_size:{}'.format(grid_size))
         
         grid_arange = np.arange(grid_size)
         xx, yy = np.meshgrid(grid_arange, grid_arange)

@@ -38,7 +38,7 @@ def download_coco_for_test(root_dir='D:\data\\coco', remove_compressed_file=True
     """Download the VOC data if it doesn't exit in processed_folder already."""
 
     if (os.path.exists(os.path.join(img_dir, 'test2017'))):
-        print("Already exist!")
+        print("COCO Dataset : Already exist !")
         return
 
     print("Test-Dev Download...")
