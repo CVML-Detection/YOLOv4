@@ -210,7 +210,7 @@ class PANet(nn.Module):
 
 
 class PredictNet(nn.Module):
-    def __init__(self, feature_channels, target_channels=255):              # feature channels = [256, 512, 1024]
+    def __init__(self, feature_channels, target_channels):              # feature channels = [256, 512, 1024]
         super(PredictNet, self).__init__()
 
         self.predict_conv = nn.ModuleList(
@@ -264,7 +264,7 @@ class YOLOv4(nn.Module):
 
         self.PANet = PANet(feature_channels)
 
-        self.predict_net = PredictNet(feature_channels, target_channels=255)
+        self.predict_net = PredictNet(feature_channels, target_channels=3*(num_classes+5))
 
     def forward(self, x):
         atten = None

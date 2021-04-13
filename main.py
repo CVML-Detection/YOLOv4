@@ -7,7 +7,7 @@ import torch
 from dataset.voc_dataset import VOC_Dataset
 from dataset.coco_dataset import COCO_Dataset
 from train import train
-# from test import test
+from test import test
 from model.model import YOLOv4, CSPDarknet53
 from coder import YOLOv4_Coder
 from loss import YOLOv4_Loss
@@ -22,16 +22,13 @@ def main():
     # 3. visdom
     vis = visdom.Visdom(port=opts.port)
 
-
     train_set = None
     test_set = None
-
     # 4. data set
     if opts.data_type == 'voc':
         train_set = VOC_Dataset(root=opts.data_root, split='train', resize=opts.image_size)
         test_set = VOC_Dataset(root=opts.data_root, split='test', resize=opts.image_size)
         opts.num_classes = 20
-
     elif opts.data_type == 'coco':
         train_set = COCO_Dataset(root=opts.data_root, set_name='train2017', split='train', resize=opts.image_size)
         test_set = COCO_Dataset(root=opts.data_root, set_name='val2017', split='test', resize=opts.image_size)
@@ -44,7 +41,6 @@ def main():
                                                shuffle=True,
                                                num_workers=0,
                                                pin_memory=True)
-
     test_loader = torch.utils.data.DataLoader(test_set,
                                               batch_size=1,
                                               collate_fn=test_set.collate_fn,
@@ -53,7 +49,7 @@ def main():
                                               pin_memory=True)
 
     # 6. network
-    model = YOLOv4(CSPDarknet53(pretrained=True)).to(device)
+    model = YOLOv4(CSPDarknet53(pretrained=True), num_classes=opts.num_classes).to(device)
     model = torch.nn.DataParallel(model, device_ids=device_ids)
     # 6-1. coder
     coder = YOLOv4_Coder(data_type=opts.data_type)
@@ -82,8 +78,7 @@ def main():
         print('\nNo check point to resume.. train from scratch.\n')
 
     for epoch in range(opts.start_epoch, opts.epoch):
-        train(
-            epoch=epoch,
+        train(epoch=epoch,
             vis=vis,
             train_loader=train_loader,
             model=model,
@@ -91,6 +86,15 @@ def main():
             optimizer=optimizer,
             scheduler=scheduler,
             opts=opts)
+
+        test(epoch=epoch,
+            vis=vis,
+            test_loader=test_loader
+            model=model,
+            criterion=criterion,
+            coder=coder,
+            opts=opts)
+
         scheduler.step()
 
 

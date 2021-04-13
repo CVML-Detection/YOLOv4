@@ -53,10 +53,10 @@ class YOLOv4_Loss(nn.Module):
         p_conf = p[..., 4:5]
         p_cls = p[..., 5:]
 
-        # gt (encoded)          [b, gs, gs, 3, 86]
+        # gt (encoded)          [b, gs, gs, 3, 86]  ( + ignore mask )
         label_xywh = gt_en[..., :4]
         label_obj_mask = gt[..., 4:5]
-        label_mix = gt[..., 5:6]
+        label_ignore_mask = gt[..., 5:6]
         label_cls = gt[..., 6:]
 
         # Calculating Loss
@@ -65,19 +65,19 @@ class YOLOv4_Loss(nn.Module):
 
         # The scaled weight of bbox is used to balance the impact of small objects and large objects on loss.
         bbox_loss_scale = 2.0 - 1.0 * label_xywh[..., 2:3] * label_xywh[..., 3:4] / (img_size ** 2)     # [b,grid,grid,3,1]
-        loss_ciou = label_obj_mask * bbox_loss_scale * (1.0 - ciou) * label_mix
+        loss_ciou = label_obj_mask * bbox_loss_scale * (1.0 - ciou)
 
         # 2) Conf Loss      # Focal Loss
         loss_conf = 0
 
         # 3) Cls Loss       # BCE
-        loss_cls = (label_obj_mask * BCE(input=p_cls, target=label_cls) * label_mix)
+        loss_cls = (label_obj_mask * BCE(input=p_cls, target=label_cls))
 
         loss_ciou = (torch.sum(loss_ciou)) / batch_size
         # loss_conf = (torch.sum(loss_conf)) / batch_size
         loss_cls = (torch.sum(loss_cls)) / batch_size
         # loss = loss_ciou + loss_conf + loss_cls
-        loss = loss_ciou + loss_cls
+        loss = loss_ciou
         
         return loss, loss_ciou, 0, loss_cls
 
