@@ -206,3 +206,43 @@ class YOLOv4_Coder(Coder):
 
         # return prediction값 , decode된 값
         return (p, pred_bbox)       # 둘 다 [b, o, o, 3, 85]    (o = 64, 32, 16)
+
+    def post_processing(self, pred, is_demo=False):
+        if is_demo:
+            self.assign_anchors_to_cpu()
+
+        output = []
+        [[f1, f2, f3], atten] = pred        # [b,255,64,64], [b,255,32,32], [b,255,16,16]
+        output.append(self.decode(p=f1, stage=0))  # [b, 64, 64, 3, 85]   p[0], p_d[0]
+        output.append(self.decode(p=f2, stage=1))  # [b, 32, 32, 3, 85]   p[1], p_d[1]
+        output.append(self.decode(p=f3, stage=2))  # [b, 16, 16, 3, 85]   p[2], p_d[2]
+        p, p_d = list(zip(*output))
+
+        stride=[]
+        grid_size=[]
+        pred_box=[]
+        pred_conf=[]
+        pred_cls=[]
+        # Stage 0, 1, 2에 대해서
+        for stg in range(3):                                    # 512 x 512
+            stride.append(int(self.strides[stg].item()))        # [8, 16, 32]
+            grid_size.append(int(self.img_size/stride[stg]))    # [64, 32, 16]
+
+            # FIXME grid_size 로 왜 나누지?
+            # FIXME : view 쓰면 에러난다. reshape 써도 되는지?
+            pred_box.append(p[stg][:,:,:,:,0:4].reshape(-1, grid_size[stg]*grid_size[stg]*self.num_anchors, 4))
+            pred_conf.append(p[stg][:,:,:,:,4:5].reshape(-1,grid_size[stg]*grid_size[stg]*self.num_anchors))
+            pred_cls.append(p[stg][:,:,:,:,5:].reshape(-1,grid_size[stg]*grid_size[stg]*self.num_anchors, self.num_classes))
+
+        pred_box_final = torch.cat([pred_box[0], pred_box[1], pred_box[2]], dim=1)
+        pred_conf_final = torch.cat([pred_conf[0], pred_conf[1], pred_conf[2]], dim=1)
+        pred_cls_final = torch.cat([pred_cls[0], pred_cls[1], pred_cls[2]], dim=1)
+
+        # [1, 16128, 4]
+        # [1, 16128, 80]
+        # [1, 16128]
+
+        pred_bboxes = cxcy_to_xy(pred_box_final).squeeze()
+        pred_scores = (pred_cls_final*pred_conf_final.unsqueeze(-1)).squeeze()
+
+        return pred_bboxes, pred_scores

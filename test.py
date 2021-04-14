@@ -3,6 +3,7 @@ import time
 import torch
 from evaluator import Evaluator
 from config import device
+from utils import detect
 
 
 def test(epoch, vis, test_loader, model, criterion, coder, opts):
@@ -35,9 +36,50 @@ def test(epoch, vis, test_loader, model, criterion, coder, opts):
 
             # ---------- loss ----------
             pred = model(images)
-            loss, _ = criterion(pred, boxes, labels)
+            loss, loss_ciou, loss_cls = criterion(pred, boxes, labels)
             sum_loss += loss.item()
 
             # ---------- eval ----------
 
+            pred_boxes, pred_labels, pred_scores = detect(pred=pred, coder=coder, opts=opts)
+
+            if opts.data_type == 'voc':
+                img_name = datas[3][0]
+                img_info = datas[4][0]
+                info = (pred_boxes, pred_labels, pred_scores, img_name, img_info)
+
+            elif opts.data_type == 'coco':
+                img_id = test_loader.dataset.img_id[idx]
+                img_info = test_loader.dataset.coco.loadImgs(ids=img_id)[0]
+                coco_ids = test_loader.dataset.coco_ids
+                info = (pred_boxes, pred_labels, pred_scores, img_id, img_info, coco_ids)
+
+            evaluator.get_info(info)
+
+            toc = time.time()
             
+            # ---------- print ----------
+            if idx % 1000 == 0 or idx == len(test_loader) - 1:
+                print('Epoch: [{0}]\t'
+                      'Step: [{1}/{2}]\t'
+                      'Loss: {loss:.4f}\t'
+                      'Time : {time:.4f}\t'
+                      .format(epoch,
+                              idx, len(test_loader),
+                              loss=loss,
+                              time=toc - tic))
+
+        mAP = evaluator.evaluate(test_loader.dataset)
+        mean_loss = sum_loss / len(test_loader)
+
+        if vis is not None:
+            # loss plot
+            vis.line(X=torch.ones((1, 2)).cpu() * epoch,  # step
+                     Y=torch.Tensor([mean_loss, mAP]).unsqueeze(0).cpu(),
+                     win='test_loss',
+                     update='append',
+                     opts=dict(xlabel='step',
+                               ylabel='test',
+                               title='test loss',
+                               legend=['test Loss', 'mAP']))
+

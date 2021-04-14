@@ -78,18 +78,18 @@ def main():
         print('\nNo check point to resume.. train from scratch.\n')
 
     for epoch in range(opts.start_epoch, opts.epoch):
-        train(epoch=epoch,
-            vis=vis,
-            train_loader=train_loader,
-            model=model,
-            criterion=criterion,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            opts=opts)
+        # train(epoch=epoch,
+        #     vis=vis,
+        #     train_loader=train_loader,
+        #     model=model,
+        #     criterion=criterion,
+        #     optimizer=optimizer,
+        #     scheduler=scheduler,
+        #     opts=opts)
 
         test(epoch=epoch,
             vis=vis,
-            test_loader=test_loader
+            test_loader=test_loader,
             model=model,
             criterion=criterion,
             coder=coder,
