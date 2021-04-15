@@ -43,13 +43,16 @@ def parse(args):
     parser.add_argument('--epoch', type=int, default=150)  # 173
     parser.add_argument('--port', type=str, default='8097')  # 173
     parser.add_argument('--lr', type=float, default=1e-6)
-    parser.add_argument('--batch_size', type=int, default=2)
+    parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--image_size', type=int, default=512)
     parser.add_argument('--save_path', type=str, default='./saves')
     parser.add_argument('--save_file_name', type=str, default='yolov4_cspdkn53_coco')  # FIXME
     parser.add_argument('--conf_thres', type=float, default=0.05)
     parser.add_argument('--start_epoch', type=int, default=0)
+    parser.add_argument('--test', dest='test', action='store_true')
+    parser.set_defaults(test=False)
+    parser.add_argument('--test_epoch', type=int, default=0)
 
     # FIXME choose your dataset root
     # parser.add_argument('--data_root', type=str, default='D:\data\\voc')

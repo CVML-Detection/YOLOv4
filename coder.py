@@ -141,7 +141,7 @@ class YOLOv4_Coder(Coder):
         result = []
         result_en = []  
 
-        # 512 만들어 주기
+        # 512x512 만들어 주기
         for stg in range(3):
             result.append(torch.cat([gt_prop_txty[stg], gt_twth[stg], gt_objectness[stg], gt_ignore_mask[stg].unsqueeze(-1), gt_classes[stg]], dim=-1).to(device))
             # FIXME 이렇게 해도 되나?
@@ -194,18 +194,23 @@ class YOLOv4_Coder(Coder):
         # print('grid_xy.shape : {}'.format(grid_xy.shape))
 
 
-        pred_xy = (torch.sigmoid(conv_raw_dxdy) + grid_xy) * stride
-        pred_wh = (torch.exp(conv_raw_dwdh) * anchors) * stride
+        pred_xy = (torch.sigmoid(conv_raw_dxdy) + grid_xy) 
+        pred_wh = (torch.exp(conv_raw_dwdh) * anchors)
+        pred_xy_512 = pred_xy*stride
+        pred_wh_512 = pred_wh*stride
 
         pred_xywh = torch.cat([pred_xy, pred_wh], dim=-1)
+        pred_xywh_512 = torch.cat([pred_xy_512, pred_wh_512], dim=-1)
         pred_conf = torch.sigmoid(conv_raw_conf)
         pred_prob = torch.sigmoid(conv_raw_prob)
         pred_bbox = torch.cat([pred_xywh, pred_conf, pred_prob], dim=-1)
+        pred_bbox_512 = torch.cat([pred_xywh_512, pred_conf, pred_prob], dim=-1)
 
         # pred_bbox = pred_bbox.view(-1, 85)
 
         # return prediction값 , decode된 값
-        return (p, pred_bbox)       # 둘 다 [b, o, o, 3, 85]    (o = 64, 32, 16)
+        return (p, pred_bbox, pred_bbox_512)       # 둘 다 [b, o, o, 3, 85]    (o = 64, 32, 16)
+
 
     def post_processing(self, pred, is_demo=False):
         if is_demo:
@@ -216,7 +221,7 @@ class YOLOv4_Coder(Coder):
         output.append(self.decode(p=f1, stage=0))  # [b, 64, 64, 3, 85]   p[0], p_d[0]
         output.append(self.decode(p=f2, stage=1))  # [b, 32, 32, 3, 85]   p[1], p_d[1]
         output.append(self.decode(p=f3, stage=2))  # [b, 16, 16, 3, 85]   p[2], p_d[2]
-        p, p_d = list(zip(*output))
+        p, p_d, p_d_512 = list(zip(*output))
 
         stride=[]
         grid_size=[]
@@ -230,9 +235,9 @@ class YOLOv4_Coder(Coder):
 
             # FIXME grid_size 로 왜 나누지?
             # FIXME : view 쓰면 에러난다. reshape 써도 되는지?
-            pred_box.append(p[stg][:,:,:,:,0:4].reshape(-1, grid_size[stg]*grid_size[stg]*self.num_anchors, 4))
-            pred_conf.append(p[stg][:,:,:,:,4:5].reshape(-1,grid_size[stg]*grid_size[stg]*self.num_anchors))
-            pred_cls.append(p[stg][:,:,:,:,5:].reshape(-1,grid_size[stg]*grid_size[stg]*self.num_anchors, self.num_classes))
+            pred_box.append(p_d[stg][:,:,:,:,0:4].reshape(-1, grid_size[stg]*grid_size[stg]*self.num_anchors, 4))
+            pred_conf.append(p_d[stg][:,:,:,:,4:5].reshape(-1,grid_size[stg]*grid_size[stg]*self.num_anchors))
+            pred_cls.append(p_d[stg][:,:,:,:,5:].reshape(-1,grid_size[stg]*grid_size[stg]*self.num_anchors, self.num_classes))
 
         pred_box_final = torch.cat([pred_box[0], pred_box[1], pred_box[2]], dim=1)
         pred_conf_final = torch.cat([pred_conf[0], pred_conf[1], pred_conf[2]], dim=1)

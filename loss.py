@@ -22,34 +22,33 @@ class YOLOv4_Loss(nn.Module):
         output.append(self.coder.decode(p=f1, stage=0))  # [4, 64, 64, 3, 85]   p[0], p_d[0]
         output.append(self.coder.decode(p=f2, stage=1))  # [4, 32, 32, 3, 85]   p[1], p_d[1]
         output.append(self.coder.decode(p=f3, stage=2))  # [4, 16, 16, 3, 85]   p[2], p_d[2]
-        p, p_d = list(zip(*output))
+        p, p_d, p_d_512 = list(zip(*output))
         
         # -----------------------------
         # Encode GT
         # -----------------------------
         batch_size = p[0].shape[0]
         gt, gt_en = self.coder.encode(gt_boxes, gt_labels)
-        # gt_labels_en_s, gt_boxes_en_s = self.coder.encode(gt_boxes, gt_labels, stage=0)
 
         
         strides = self.coder.strides
-        (loss_s, loss_s_ciou, loss_s_conf, loss_s_cls) = self.loss_per_layer(p[0], p_d[0], gt[0], gt_en[0], strides[0])
-        (loss_m, loss_m_ciou, loss_m_conf, loss_m_cls) = self.loss_per_layer(p[1], p_d[1], gt[1], gt_en[1], strides[1])
-        (loss_l, loss_l_ciou, loss_l_conf, loss_l_cls) = self.loss_per_layer(p[2], p_d[2], gt[2], gt_en[2], strides[2])
+        (loss_s, loss_s_ciou, loss_s_conf, loss_s_cls) = self.loss_per_layer(p[0], p_d[0], p_d_512[0], gt[0], gt_en[0], strides[0])
+        (loss_m, loss_m_ciou, loss_m_conf, loss_m_cls) = self.loss_per_layer(p[1], p_d[1], p_d_512[1], gt[1], gt_en[1], strides[1])
+        (loss_l, loss_l_ciou, loss_l_conf, loss_l_cls) = self.loss_per_layer(p[2], p_d[2], p_d_512[2], gt[2], gt_en[2], strides[2])
         loss = loss_s + loss_m + loss_l
         loss_ciou = loss_s_ciou + loss_m_ciou + loss_l_ciou
         loss_cls = loss_s_cls + loss_m_cls + loss_l_cls
         return loss, loss_ciou, loss_cls
 
 
-    def loss_per_layer(self, p, p_d, gt, gt_en, stride):
+    def loss_per_layer(self, p, p_d, p_d_512, gt, gt_en, stride):
         BCE = nn.BCEWithLogitsLoss(reduction="none")
 
         batch_size, grid = p.shape[:2]
         img_size = stride * grid
 
         # pred (decoded)        [b, gs, gs, 3, 85]
-        p_d_xywh = p_d[..., :4]     #[b, 64, 64, 3, 4]
+        p_d_xywh = p_d_512[..., :4]     #[b, 64, 64, 3, 4]
         p_conf = p[..., 4:5]
         p_cls = p[..., 5:]
 

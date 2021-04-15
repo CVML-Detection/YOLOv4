@@ -59,7 +59,7 @@ def test(epoch, vis, test_loader, model, criterion, coder, opts):
             toc = time.time()
             
             # ---------- print ----------
-            if idx % 1000 == 0 or idx == len(test_loader) - 1:
+            if idx % 10 == 0 or idx == len(test_loader) - 1:
                 print('Epoch: [{0}]\t'
                       'Step: [{1}/{2}]\t'
                       'Loss: {loss:.4f}\t'

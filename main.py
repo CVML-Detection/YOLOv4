@@ -64,38 +64,51 @@ def main():
     # 9. scheduler
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[100], gamma=0.1)
 
-    # 10. resume
-    if opts.start_epoch != 0:
 
-        checkpoint = torch.load(os.path.join(opts.save_path, opts.save_file_name) + '.{}.pth.tar'
-                                .format(opts.start_epoch - 1), map_location=device)        # 하나 적은걸 가져와서 train
-        model.load_state_dict(checkpoint['model_state_dict'])                              # load model state dict
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])                      # load optim state dict
-        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])                      # load sched state dict
-        print('\nLoaded checkpoint from epoch %d.\n' % (int(opts.start_epoch) - 1))
+    if not opts.test:
+        # 10. resume
+        if opts.start_epoch != 0:
 
+            checkpoint = torch.load(os.path.join(opts.save_path, opts.save_file_name) + '.{}.pth.tar'
+                                    .format(opts.start_epoch - 1), map_location=device)        # 하나 적은걸 가져와서 train
+            model.load_state_dict(checkpoint['model_state_dict'])                              # load model state dict
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])                      # load optim state dict
+            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])                      # load sched state dict
+            print('\nLoaded checkpoint from epoch %d.\n' % (int(opts.start_epoch) - 1))
+
+        else:
+            print('\nNo check point to resume.. train from scratch.\n')
+
+
+        for epoch in range(opts.start_epoch, opts.epoch):
+            train(epoch=epoch,
+                vis=vis,
+                train_loader=train_loader,
+                model=model,
+                criterion=criterion,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                opts=opts)
+
+            test(epoch=epoch,
+                vis=vis,
+                test_loader=test_loader,
+                model=model,
+                criterion=criterion,
+                coder=coder,
+                opts=opts)
+
+            scheduler.step()
+    
     else:
-        print('\nNo check point to resume.. train from scratch.\n')
-
-    for epoch in range(opts.start_epoch, opts.epoch):
-        # train(epoch=epoch,
-        #     vis=vis,
-        #     train_loader=train_loader,
-        #     model=model,
-        #     criterion=criterion,
-        #     optimizer=optimizer,
-        #     scheduler=scheduler,
-        #     opts=opts)
-
-        test(epoch=epoch,
-            vis=vis,
-            test_loader=test_loader,
-            model=model,
-            criterion=criterion,
-            coder=coder,
-            opts=opts)
-
-        scheduler.step()
+        print('\nTest mode.. for epoch {}.\n'.format(opts.test_epoch))
+        test(epoch=opts.test_epoch,
+                vis=vis,
+                test_loader=test_loader,
+                model=model,
+                criterion=criterion,
+                coder=coder,
+                opts=opts)
 
 
 
