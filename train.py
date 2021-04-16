@@ -24,7 +24,7 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
         # print('labels : {}'.format(labels[0].shape))
 
         pred = model(images)
-        loss, loss_ciou, loss_cls = criterion(pred, boxes, labels)
+        loss, loss_ciou, loss_conf, loss_cls = criterion(pred, boxes, labels)
 
         # sgd
         optimizer.zero_grad()

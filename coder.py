@@ -59,11 +59,11 @@ class YOLOv4_Coder(Coder):
         stride=[]               # [8, 16, 32]   for each stage 0, 1, 2
         grid_size=[]            # [64, 32, 16]
 
-        gt_ignore_mask = []
         gt_prop_txty = []
         gt_twth = []
         gt_objectness = []
         gt_classes = []
+        gt_ignore_mask = []
 
         self.xy_anchor=[]
 
@@ -246,6 +246,7 @@ class YOLOv4_Coder(Coder):
         # [1, 16128, 4]
         # [1, 16128, 80]
         # [1, 16128]
+        # FIXME cxcy가 들어가는지 확인
 
         pred_bboxes = cxcy_to_xy(pred_box_final).squeeze()
         pred_scores = (pred_cls_final*pred_conf_final.unsqueeze(-1)).squeeze()

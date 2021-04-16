@@ -36,7 +36,7 @@ def test(epoch, vis, test_loader, model, criterion, coder, opts):
 
             # ---------- loss ----------
             pred = model(images)
-            loss, loss_ciou, loss_cls = criterion(pred, boxes, labels)
+            loss, loss_ciou, loss_conf, loss_cls = criterion(pred, boxes, labels)
             sum_loss += loss.item()
 
             # ---------- eval ----------

@@ -6,6 +6,22 @@ import math
 
 import config as cfg
 
+
+class FocalLoss(nn.Module):
+    def __init__(self, gamma=2.0, alpha=1.0, reduction="mean"):
+        super(FocalLoss, self).__init__()
+        self.__gamma = gamma
+        self.__alpha = alpha
+        self.__loss = nn.BCEWithLogitsLoss(reduction=reduction)
+
+    def forward(self, input, target):
+        loss = self.__loss(input=input, target=target)
+        loss *= self.__alpha * torch.pow(
+            torch.abs(target - torch.sigmoid(input)), self.__gamma
+        )
+        return loss
+
+
 class YOLOv4_Loss(nn.Module):
     def __init__(self, coder):
         super().__init__()
@@ -37,12 +53,14 @@ class YOLOv4_Loss(nn.Module):
         (loss_l, loss_l_ciou, loss_l_conf, loss_l_cls) = self.loss_per_layer(p[2], p_d[2], p_d_512[2], gt[2], gt_en[2], strides[2])
         loss = loss_s + loss_m + loss_l
         loss_ciou = loss_s_ciou + loss_m_ciou + loss_l_ciou
+        loss_conf = loss_s_conf + loss_m_conf + loss_l_conf
         loss_cls = loss_s_cls + loss_m_cls + loss_l_cls
-        return loss, loss_ciou, loss_cls
+        return loss, loss_ciou, loss_conf, loss_cls
 
 
     def loss_per_layer(self, p, p_d, p_d_512, gt, gt_en, stride):
         BCE = nn.BCEWithLogitsLoss(reduction="none")
+        FOCAL = FocalLoss(gamma=2, alpha=1.0, reduction="none")
 
         batch_size, grid = p.shape[:2]
         img_size = stride * grid
@@ -55,7 +73,7 @@ class YOLOv4_Loss(nn.Module):
         # gt (encoded)          [b, gs, gs, 3, 86]  ( + ignore mask )
         label_xywh = gt_en[..., :4]
         label_obj_mask = gt[..., 4:5]
-        label_ignore_mask = gt[..., 5:6]
+        label_ignore_mask = gt[..., 5:6]        # use in Data Aug 
         label_cls = gt[..., 6:]
 
         # Calculating Loss
@@ -67,18 +85,19 @@ class YOLOv4_Loss(nn.Module):
         loss_ciou = label_obj_mask * bbox_loss_scale * (1.0 - ciou)
 
         # 2) Conf Loss      # Focal Loss
-        loss_conf = 0
+        label_noobj_mask = (1-label_obj_mask) * BCE(label_obj_mask, p_conf) * label_ignore_mask
+        loss_conf = label_obj_mask * FOCAL(input=p_conf, target=label_obj_mask) + label_noobj_mask * FOCAL(input=p_conf, target=label_obj_mask)
 
         # 3) Cls Loss       # BCE
         loss_cls = (label_obj_mask * BCE(input=p_cls, target=label_cls))
 
         loss_ciou = (torch.sum(loss_ciou)) / batch_size
-        # loss_conf = (torch.sum(loss_conf)) / batch_size
+        loss_conf = (torch.sum(loss_conf)) / batch_size
         loss_cls = (torch.sum(loss_cls)) / batch_size
-        # loss = loss_ciou + loss_conf + loss_cls
-        loss = loss_ciou
+
+        loss = loss_ciou + loss_conf + loss_cls
         
-        return loss, loss_ciou, 0, loss_cls
+        return loss, loss_ciou, loss_conf, loss_cls
 
 
     def CIOU_xywh_torch(self, boxes1, boxes2):

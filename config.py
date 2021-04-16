@@ -43,7 +43,7 @@ def parse(args):
     parser.add_argument('--epoch', type=int, default=150)  # 173
     parser.add_argument('--port', type=str, default='8097')  # 173
     parser.add_argument('--lr', type=float, default=1e-6)
-    parser.add_argument('--batch_size', type=int, default=4)
+    parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--image_size', type=int, default=512)
     parser.add_argument('--save_path', type=str, default='./saves')
