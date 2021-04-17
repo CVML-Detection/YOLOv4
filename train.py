@@ -44,14 +44,14 @@ def train(epoch, vis, train_loader, model, criterion, optimizer, scheduler, opts
 
             if vis is not None:
                 # loss plot
-                vis.line(X=torch.ones((1, 3)).cpu() * idx + epoch * train_loader.__len__(),  # step
-                         Y=torch.Tensor([loss, loss_ciou, loss_cls]).unsqueeze(0).cpu(),
+                vis.line(X=torch.ones((1, 4)).cpu() * idx + epoch * train_loader.__len__(),  # step
+                         Y=torch.Tensor([loss, loss_ciou, loss_conf, loss_cls]).unsqueeze(0).cpu(),
                          win='train_loss',
                          update='append',
                          opts=dict(xlabel='step',
                                    ylabel='Loss',
                                    title='training loss',
-                                   legend=['Total Loss', 'CIoU Loss', 'CLS Loss']))
+                                   legend=['Total Loss', 'CIoU Loss', 'Conf Loss', 'CLS Loss']))
     
     # if not os.path.exist(opts.save_path):
     #     os.mkdir(opts.save_path)
