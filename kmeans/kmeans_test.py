@@ -42,7 +42,7 @@ cluster_ids_y = kmeans_predict(
 # plot
 plt.figure(figsize=(4, 3), dpi=160)
 plt.scatter(x[:, 0], x[:, 1], c=cluster_ids_x, cmap='cool')
-plt.scatter(y[:, 0], y[:, 1], c=cluster_ids_y, cmap='cool', marker='X')
+# plt.scatter(y[:, 0], y[:, 1], c=cluster_ids_y, cmap='cool', marker='X')
 plt.scatter(
     cluster_centers[:, 0], cluster_centers[:, 1],
     c='white',
@@ -52,4 +52,4 @@ plt.scatter(
 )
 plt.axis([-1, 1, -1, 1])
 plt.tight_layout()
-plt.savefig('test Plot3.png', dpi=300, bbox_inches='tight')
+plt.savefig('test Plot2.png', dpi=300, bbox_inches='tight')

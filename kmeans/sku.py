@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+import matplotlib.pyplot as plt
 
 from kmeans_pytorch import kmeans
 from sklearn.cluster import KMeans
@@ -53,7 +54,6 @@ class SKU110K_Dataset(Dataset):
         self.size_dict = {}
         self.bbox_w = []
         self.bbox_h = []
-        self.bbox_ratio = []
         print("Loading Dataset ...")
         with open(self.annotations_path, mode='r') as f:      # Load Annotation
             reader = csv.reader(f)
@@ -63,10 +63,8 @@ class SKU110K_Dataset(Dataset):
                 bbox = list(map(int, line[1:5]))              # string to int in list
                 wh = list(map(int, line[-2:]))              # string to int in list
                 
-                self.bbox_w.append(bbox[2]-bbox[0])
-                self.bbox_h.append(bbox[3]-bbox[1])
-                self.bbox_ratio.append((bbox[2]-bbox[0])/(bbox[3]-bbox[1]))     # W / H
-
+                self.bbox_w.append((bbox[2]-bbox[0])/wh[0])
+                self.bbox_h.append((bbox[3]-bbox[1])/wh[1])
 
                 # if img_name not in self.bbox_dict:
                 #     self.bbox_dict[img_name] = []
@@ -80,23 +78,35 @@ class SKU110K_Dataset(Dataset):
                 
         print("num of image :", len(self.bbox_dict))
 
-    def kmeans(self):
+
+    def kmeans(self, num_clusters=3, axis=0.6):
         print('\n=============\nKMEANs Clustering...')
-        bbox_ratio_tensor = torch.from_numpy(np.array(self.bbox_ratio)).unsqueeze(-1)
         bbox_w_tensor = torch.from_numpy(np.array(self.bbox_w)).unsqueeze(-1)
         bbox_h_tensor = torch.from_numpy(np.array(self.bbox_h)).unsqueeze(-1)
         bbox_wh = torch.cat([bbox_w_tensor, bbox_h_tensor], dim=-1)
-
-        print('bbox_ratio_tensor:{}'.format(bbox_ratio_tensor.size()))
-        print('bbox_w_tensor:{}'.format(bbox_w_tensor.size()))
-        print('bbox_h_tensor:{}'.format(bbox_h_tensor.size()))
         print('bbox_wh:{}'.format(bbox_wh.size()))
 
-        # cluster_ids_x, cluster_centers = kmeans(X=bbox_ratio_tensor, num_clusters=2, distance='euclidean', device=torch.device('cuda:0'))
+        cluster_ids, cluster_centers = kmeans(
+            X=bbox_wh, num_clusters=num_clusters, distance='euclidean', device=torch.device('cuda:0')
+        )
+        print('\nNum Cluster: {}'.format(num_clusters))
+        for i, center in enumerate(cluster_centers):
+            print('Center Point: {}'.format(center))
 
-        # plt.figure(figsize=(4, 3), dpi=160)
-        # plt.scatter(x[:, 0], x[:, 1], c=cluster_ids_x, cmap='cool')
-        # plt.savefig('test Plot3.png', dpi=300, bbox_inches='tight')
+        plt.figure(figsize=(4,3), dpi=160)
+        plt.scatter(bbox_wh[:, 0], bbox_wh[:, 1], c=cluster_ids, cmap='cool')
+        plt.scatter(
+            cluster_centers[:, 0], cluster_centers[:, 1],
+            c='white',
+            alpha=0.6,
+            edgecolors='black',
+            linewidths=2
+        )
+        plt.axis([0, axis, 0, axis])
+        plt.tight_layout()
+        result_name = 'result/cluster{}_{}.png'.format(num_clusters, axis)
+
+        plt.savefig(result_name, dpi=300, bbox_inches='tight')
 
 
     def __len__(self):
@@ -215,7 +225,7 @@ if __name__ == '__main__':
     #data_root = 'D:\data\SKU110K_fixed'
     data_root = '/data/sku110k'
     dataset = SKU110K_Dataset(root=data_root, split='val', resize=800)
-    dataset.kmeans()
+    dataset.kmeans(num_clusters=3, axis=0.3)
 
 
     # dataloader = DataLoader(dataset, batch_size=1, shuffle=True, collate_fn=dataset.collate_fn)
