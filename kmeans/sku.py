@@ -227,6 +227,9 @@ if __name__ == '__main__':
     dataset = SKU110K_Dataset(root=data_root, split='val', resize=800)
     dataset.kmeans(num_clusters=3, axis=0.3)
 
+    # inertia 값 구해서 좋은 cluster 개수 알아내기
+    # http://hleecaster.com/ml-kmeans-clustering-concept/
+
 
     # dataloader = DataLoader(dataset, batch_size=1, shuffle=True, collate_fn=dataset.collate_fn)
     # for i, (img, box, lab, loc, cnt) in enumerate(dataloader):
